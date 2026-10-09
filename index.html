@@ -74,15 +74,18 @@ function games(){
   const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||g.plat===fp)&&g.name.toLowerCase().includes(q.toLowerCase()));
   let h=`<input id="q" placeholder="🔍 Buscar jogo..." value="${esc(q)}">
   <div class="row"><select id="fs"><option value="">Todos os status</option><option value="__rev" ${fs==='__rev'?'selected':''}>⚠️ Para revisar</option>${ST.map(s=>`<option ${fs==s?'selected':''}>${s}</option>`).join('')}</select>
-  <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option ${fp==s?'selected':''}>${s}</option>`).join('')}</select></div>`;
+  <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option ${fp==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <select id="so" aria-label="Ordenar">${[['az','Ordem: A → Z'],['za','Ordem: Z → A'],['gb','Ordem: maior tamanho primeiro'],['rec','Ordem: últimos adicionados primeiro']].map(([v,t])=>`<option value="${v}" ${(S.sort||'az')===v?'selected':''}>${t}</option>`).join('')}</select>`;
   if(!l.length)h+=`<div class="card m">${S.games.length?'Nenhum jogo encontrado.':'Nenhum jogo ainda. Toque no + para adicionar o primeiro.'}</div>`;
+  const md=S.sort||'az',cm=(a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true,sensitivity:'base'});
+  if(md==='az')l.sort(cm);else if(md==='za')l.sort((a,b)=>cm(b,a));else if(md==='gb')l.sort((a,b)=>gb(b)-gb(a)||cm(a,b));
   l.forEach(g=>{const s=gb(g);
     h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
     <div class="gi"><b>${esc(g.name)}</b><div class="m">${g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
     <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
   $('#main').innerHTML=h;
   $('#q').oninput=e=>{q=e.target.value;const p=e.target.selectionStart;games();const i=$('#q');i.focus();i.setSelectionRange(p,p)};
-  $('#fs').onchange=e=>{fs=e.target.value;games()};$('#fp').onchange=e=>{fp=e.target.value;games()};
+  $('#fs').onchange=e=>{fs=e.target.value;games()};$('#fp').onchange=e=>{fp=e.target.value;games()};$('#so').onchange=e=>{S.sort=e.target.value;save();games()};
   document.querySelectorAll('.game').forEach(e=>e.onclick=()=>form(e.dataset.id));
 }
 function space(){
