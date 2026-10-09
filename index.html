@@ -290,6 +290,48 @@ async function enrich(ids,wantInfo,wantCov,say){
         await sleep(250)}}
   }finally{busy=false}
   return out}
+const say2=t=>{const e=$('#mmsg');if(e)e.textContent=t};
+let PEND=[];
+const cleanName=f=>f.replace(/\.[^.]+$/,'').replace(/_+/g,' ').replace(/\s*[\(\[][^)\]]*[\)\]]/g,'').replace(/^\s*\d{1,3}\s*[-.)]\s+/,'').replace(/\s+-\s*capa$/i,'').replace(/\s+/g,' ').trim();
+const junkName=nm=>!nm||nm.length<2||/^\d+$/.test(norm(nm).replace(/ /g,''))||/^(img|image|imagem|screenshot|screen|photo|foto|pxl|dsc|whatsapp|video|vid)\b/i.test(nm)||/^[a-z]{4}[ -]?\d{3}/i.test(nm);
+function fileThumb(f){return new Promise(res=>{const u=URL.createObjectURL(f),i=new Image();
+  i.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=120;const m=Math.min(i.width,i.height);
+    c.getContext('2d').drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,120,120);res(c.toDataURL('image/jpeg',.75))}catch(e){res(null)}URL.revokeObjectURL(u)};
+  i.onerror=()=>{URL.revokeObjectURL(u);res(null)};i.src=u})}
+function putCover(nm,img,create,plat,st,hd){
+  const n=norm(nm);if(!n)return null;
+  let g=S.games.find(x=>norm(x.name)===n&&x.plat===plat)||S.games.find(x=>norm(x.name)===n),made=false;
+  if(!g){if(!create)return null;g={id:Date.now()+Math.floor(Math.random()*1e6),name:nm.trim(),plat,status:st,unit:'GB',hd,backup:'Não',rev:true};S.games.unshift(g);made=true}
+  g.img=img;return {g,made}}
+async function bulkCovers(files,create,info,plat,st,hd,say){
+  const res={ok:0,made:0,bad:[],skip:[],pend:0},madeIds=[];
+  const arr=[...files].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true}));
+  for(let k=0;k<arr.length;k++){const f=arr[k];say(`🖼️ Processando ${k+1} de ${arr.length}: ${f.name}`);
+    const img=await fileThumb(f);if(!img){res.bad.push(f.name);continue}
+    const nm=cleanName(f.name);
+    if(junkName(nm)){PEND.push({img,name:''});res.pend++;continue}
+    const r=putCover(nm,img,create,plat,st,hd);
+    if(!r){res.skip.push(nm);continue}
+    res.ok++;if(r.made){res.made++;madeIds.push(r.g.id)}
+    if(k%25===24)save();
+    await sleep(0)}
+  save();
+  if(info&&madeIds.length){say('✨ Buscando dados dos jogos criados...');const r=await enrich(madeIds,true,false,say);if(r&&r.notes.length)res.notes=r.notes}
+  return res}
+function renderPend(){const e=$('#mpend');if(!e)return;
+  if(!PEND.length){e.innerHTML='';return}
+  e.innerHTML=`<div class="m" style="margin:10px 0 4px"><b>${PEND.length} capa(s) sem nome.</b> Digite o nome do jogo de cada uma e toque em Aplicar. As que ficarem em branco continuam aqui (se sair do app, elas se perdem).</div>`
+   +PEND.map((p,k)=>`<div class="row" style="align-items:center;margin:4px 0"><div class="cv" style="width:56px;height:56px;flex:none"><img src="${p.img}" alt=""></div><input data-pk="${k}" placeholder="Nome do jogo" value="${esc(p.name||'')}"></div>`).join('')
+   +`<button id="mapl" style="width:100%;margin-top:6px">Aplicar nomes</button><button class="g" id="mclr" style="width:100%;margin-top:6px">Descartar as restantes</button>`;
+  e.querySelectorAll('[data-pk]').forEach(i=>i.oninput=()=>{PEND[i.dataset.pk].name=i.value});
+  $('#mapl').onclick=async()=>{const plat=$('#bpl').value,st=$('#bst').value,hd=$('#bhd').value,create=$('#mk').checked;let ok=0,made=0;const ids=[],rest=[];
+    PEND.forEach(p=>{const nm=(p.name||'').trim();if(!nm){rest.push(p);return}
+      const r=putCover(nm,p.img,create,plat,st,hd);if(!r){rest.push(p);return}ok++;if(r.made){made++;ids.push(r.g.id)}});
+    PEND=rest;save();renderPend();
+    say2(`${ok} capa(s) aplicada(s)${made?`, ${made} jogo(s) criado(s)`:''}.${rest.length?` Restam ${rest.length} sem nome${create?'':' ou sem jogo correspondente (marque "Criar os jogos que ainda não existem" para criá-los)'}.`:''}`);
+    if($('#mi').checked&&ids.length){const r=await enrich(ids,true,false,say2);if(r)say2(`${ok} capa(s) aplicada(s), ${made} jogo(s) criado(s) com dados.`)}
+    const v=$('#brv');if(v)v.textContent=S.games.filter(g=>g.rev).length+' jogo(s) para revisar.'};
+  $('#mclr').onclick=e=>tt(e.target,()=>{PEND=[];renderPend();say2('Capas restantes descartadas.')})}
 function batch(){
   const rv=S.games.filter(g=>g.rev).length,o=(a,v)=>a.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('');
   $('#main').innerHTML=`<div class="card"><b>📝 Adicionar vários jogos</b>
@@ -302,6 +344,13 @@ function batch(){
   <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bc" checked style="width:auto"> Buscar capas online</label>
   <button id="bgo" style="width:100%;margin-top:10px">Adicionar e buscar</button>
   <div class="m" id="bmsg" style="margin-top:8px"></div></div>
+  <div class="card"><b>🖼️ Enviar várias capas de uma vez</b>
+  <div class="m">Escolha as fotos das capas de uma vez. Se o arquivo tiver o nome do jogo (ex.: "God of War II.jpg"), o app liga a capa ao jogo de mesmo nome. Capas com nome de câmera (IMG_...) ou código (SLUS_...) ficam numa lista para você digitar o nome. Usa a plataforma, o status e o HD escolhidos acima.</div>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="mk" checked style="width:auto"> Criar os jogos que ainda não existem</label>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="mi" checked style="width:auto"> Buscar dados (gênero, ano...) dos jogos criados</label>
+  <input type="file" id="mf" accept="image/*" multiple hidden>
+  <button id="mgo" style="width:100%;margin-top:10px">📁 Escolher capas</button>
+  <div class="m" id="mmsg" style="margin-top:8px"></div><div id="mpend"></div></div>
   <div class="card"><b>Conferência</b><div class="m" id="brv" style="margin:4px 0 8px">${rv} jogo(s) para revisar.</div>
   <div class="row"><button class="g" id="bsee">Ver os para revisar</button><button class="g" id="bfix">Completar capas/dados que faltam</button></div>
   <button class="g" id="bok" style="width:100%">Marcar todos como conferidos</button></div>`;
@@ -322,6 +371,15 @@ function batch(){
     const ids=nw.map(g=>g.id);
     if(!$('#bi').checked&&!$('#bc').checked){say(`${nw.length} jogo(s) adicionado(s)${dup?` (${dup} repetido(s) ignorado(s))`:''}.`);return}
     report(await enrich(ids,$('#bi').checked,$('#bc').checked,say),ids)};
+  $('#mgo').onclick=()=>$('#mf').click();
+  $('#mf').onchange=async e=>{const fl=[...e.target.files];e.target.value='';if(!fl.length)return;
+    const r=await bulkCovers(fl,$('#mk').checked,$('#mi').checked,$('#bpl').value,$('#bst').value,$('#bhd').value,say2);
+    say2(`Pronto! ${r.ok} capa(s) aplicada(s)${r.made?`, ${r.made} jogo(s) criado(s) (marcados "revisar")`:''}.`
+      +(r.pend?` ${r.pend} sem nome: digite os nomes abaixo.`:'')
+      +(r.skip.length?` Sem jogo correspondente (não criados): ${r.skip.slice(0,6).join(', ')}${r.skip.length>6?' e mais '+(r.skip.length-6):''}.`:'')
+      +(r.bad.length?` Não consegui ler: ${r.bad.slice(0,4).join(', ')}.`:'')+(r.notes?' '+r.notes.join(' '):''));
+    done();renderPend()};
+  renderPend();
   $('#bsee').onclick=()=>{fs='__rev';fp='';q='';tab=1;render()};
   $('#bfix').onclick=async()=>{const ids=S.games.filter(g=>!g.img||!g.genre).map(g=>g.id);if(!ids.length){say('Nada faltando: todos têm capa e dados.');return}
     say(`Completando ${ids.length} jogo(s)...`);report(await enrich(ids,true,true,say),ids)};
