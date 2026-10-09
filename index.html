@@ -172,6 +172,8 @@ function form(id){
   ${f('name','Nome do jogo')}
   <div class="row"><button class="g" id="ai1" type="button">✨ Preencher pelo nome</button><button class="g" id="ai2" type="button">📷 Preencher pela foto</button></div>
   <input type="file" accept="image/*" id="im2" hidden><button class="g" id="ai3" type="button" style="width:100%;margin-top:6px">🖼️ Buscar capa online pelo nome</button>
+  <div class="row"><input id="curl" placeholder="Ou cole o link de uma imagem" inputmode="url" style="flex:3"><button class="g" id="cu" type="button" style="flex:1">Usar</button></div>
+  <button class="g" id="cgo" type="button" style="width:100%">🔎 Procurar a capa no Google Imagens</button>
   <div id="cg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px"></div><div class="m" id="aim"></div>
   <div class="row"><div><label>Plataforma</label><select data-f="plat">${o(['PS2','PS3'],g.plat)}</select></div>
   <div><label>Status</label><select data-f="status">${o(ST,g.status)}</select></div></div>
@@ -210,15 +212,15 @@ function form(id){
     i.src=u};
   const cap=async()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
     msg('🔎 Buscando capas...');$('#cg').innerHTML='';
-    try{const pl=d.querySelector('[data-f="plat"]').value==='PS3'?'PlayStation 3':'PlayStation 2';
-      const u='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=8&gsrsearch='+encodeURIComponent(nm+' '+pl+' video game')+'&prop=pageimages&piprop=thumbnail&pithumbsize=300';
-      const j=await (await fetch(u)).json();
-      const p=Object.values((j.query&&j.query.pages)||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
-      if(!p.length){msg('Não achei capa. Tente o nome em inglês ou use uma foto.');return}
-      $('#cg').innerHTML=p.map((x,k)=>`<button type="button" class="g" data-k="${k}" style="padding:4px"><img src="${esc(x.thumbnail.source)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:6px"><div class="m" style="font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title)}</div></button>`).join('');
-      msg('Toque na capa certa:');
-      $('#cg').querySelectorAll('button').forEach(b=>b.onclick=()=>useCover(p[b.dataset.k].thumbnail.source));
-    }catch(e){msg('Não consegui buscar agora (sem internet ou bloqueado neste ambiente). Use a foto da capa.')}};
+    try{const p=await findCovers(nm,d.querySelector('[data-f="plat"]').value);
+      if(!p.length){msg('Não achei capa automática. Tente o título em inglês, cole o link de uma imagem ou escolha uma da galeria.');return}
+      $('#cg').innerHTML=p.map((x,k)=>`<button type="button" class="g" data-k="${k}" style="padding:4px"><img src="${esc(x.url)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:6px"><div class="m" style="font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.m?'✓ ':''}${esc(x.title)}</div></button>`).join('');
+      msg(p.some(x=>x.m)?'Toque na capa certa (✓ = nome parecido):':'Nenhum nome bate direito. Confira antes de escolher:');
+      $('#cg').querySelectorAll('button').forEach(b=>b.onclick=()=>useCover(p[b.dataset.k].url));
+    }catch(e){msg('Não consegui buscar agora (sem internet ou bloqueado neste ambiente). Cole o link de uma imagem ou escolha da galeria.')}};
+  $('#cu').onclick=()=>{const u=$('#curl').value.trim();if(!/^https?:\/\//i.test(u)){msg('Cole um link de imagem que comece com http.');return}useCover(u)};
+  $('#cgo').onclick=()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
+    window.open('https://www.google.com/search?tbm=isch&q='+encodeURIComponent(nm+' '+d.querySelector('[data-f="plat"]').value+' capa'),'_blank','noopener')};
   $('#ai3').onclick=cap;
   $('#ai2').onclick=()=>$('#im2').click();
   $('#im2').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{
@@ -237,12 +239,21 @@ function form(id){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let busy=false;
 function parseNames(t){return t.split(/\r?\n/).map(x=>x.replace(/^\s*(?:\d{1,3}\s*[.)]\s+|[-•*]\s+)/,'').trim()).filter(Boolean)}
-async function wikiCover(nm,plat){
-  const pl=plat==='PS3'?'PlayStation 3':'PlayStation 2';
-  const u='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&gsrsearch='+encodeURIComponent(nm+' '+pl+' video game')+'&prop=pageimages&piprop=thumbnail&pithumbsize=300';
+const norm=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+async function wikiSearch(host,q){
+  const u='https://'+host+'/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=8&gsrsearch='+encodeURIComponent(q)+'&prop=pageimages&piprop=thumbnail&pithumbsize=300';
   const j=await (await fetch(u)).json();
-  const p=Object.values((j.query&&j.query.pages)||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
-  return p.length?p[0].thumbnail.source:null}
+  return Object.values((j.query&&j.query.pages)||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index)}
+async function findCovers(nm,plat){
+  const pl=plat==='PS3'?'PlayStation 3':'PlayStation 2',n=norm(nm),seen=new Set(),out=[];let err=null,ok=0;
+  const qs=[['en.wikipedia.org',nm+' '+pl+' video game'],['en.wikipedia.org',nm+' video game'],['pt.wikipedia.org',nm+' jogo eletrônico'],['en.wikipedia.org',nm]];
+  for(const [h,q] of qs){
+    try{(await wikiSearch(h,q)).forEach(x=>{ok=1;if(seen.has(x.title))return;seen.add(x.title);
+      const t=norm(x.title).replace(/ (video game|jogo eletronico)$/,'');out.push({title:x.title,url:x.thumbnail.source,m:t===n||t.includes(n)||(t.length>3&&n.includes(t))})})}
+    catch(e){err=e}
+    if(out.some(o=>o.m))break}
+  if(!out.length&&!ok&&err)throw err;
+  out.sort((a,b)=>b.m-a.m);return out}
 function toThumb(u){return new Promise(res=>{const i=new Image();i.crossOrigin='anonymous';
   i.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=120;const m=Math.min(i.width,i.height);
     c.getContext('2d').drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,120,120);res(c.toDataURL('image/jpeg',.75))}catch(e){res(u)}};
@@ -274,7 +285,7 @@ async function enrich(ids,wantInfo,wantCov,say){
     }
     if(wantCov){const todo=G.filter(g=>!g.img);let k=0;
       for(const g of todo){k++;say(`🖼️ Capa ${k} de ${todo.length}: ${g.name}`);
-        try{const u=await wikiCover(g.name,g.plat);if(u){g.img=await toThumb(u);out.cov++;save()}}
+        try{const c=await findCovers(g.name,g.plat),b=c.find(x=>x.m);if(b){g.img=await toThumb(b.url);out.cov++;save()}}
         catch(e){out.notes.push('Busca de capas indisponível agora (sem internet ou bloqueada neste ambiente).');break}
         await sleep(250)}}
   }finally{busy=false}
