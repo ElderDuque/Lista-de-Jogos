@@ -38,10 +38,11 @@ dialog::backdrop{background:#0008}
 label{display:block;font-size:12px;color:var(--mut);margin-top:8px}
 .red{color:var(--bad);font-weight:700}
 </style></head><body>
+<img src="capa.jpg" alt="" style="display:block;width:100%;max-width:760px;height:150px;object-fit:cover;object-position:center;margin:0 auto;border-radius:0 0 16px 16px">
 <header><h1>🎮 Minha Coleção</h1><div class="sub" id="sub"></div></header>
 <main id="main"><noscript><div class="card">⚠️ O JavaScript está desligado neste visualizador. Abra o arquivo ou o link no <b>Google Chrome</b>.</div></noscript></main>
 <button class="fab" id="fab" aria-label="Adicionar jogo">+</button>
-<nav><button id="t1" class="on">🎮 Jogos</button><button id="t2">💾 Espaço</button></nav>
+<nav><button id="t1" class="on">🎮 Jogos</button><button id="t3">📝 Lote</button><button id="t2">💾 Espaço</button></nav>
 <dialog id="dlg"></dialog>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -64,21 +65,21 @@ function instHTML(){return `<div class="card"><b>📲 Salvar no celular</b>`+(dp
 function tt(b,fn){if(b.dataset.arm){fn();return}b.dataset.arm=1;const o=b.textContent;b.textContent='Toque de novo p/ confirmar';setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.textContent=o}},3500)}
 function used(n){return S.games.filter(g=>g.hd===n&&g.status!=='Procurando').reduce((a,g)=>a+gb(g),0)}
 function render(){
-  $('#t1').className=tab==1?'on':'';$('#t2').className=tab==2?'on':'';$('#fab').style.display=tab==1?'':'none';
+  $('#t1').className=tab==1?'on':'';$('#t2').className=tab==2?'on':'';$('#t3').className=tab==3?'on':'';$('#fab').style.display=tab==1?'':'none';
   const c=s=>S.games.filter(g=>g.status===s).length;
-  $('#sub').textContent=`${c('Tenho')} tenho · ${c('Procurando')} procurando · ${c('Baixando')} baixando`;
-  tab==1?games():space();
+  $('#sub').textContent=`${c('Tenho')} tenho · ${c('Procurando')} procurando · ${c('Baixando')} baixando`+(S.games.some(g=>g.rev)?` · ⚠️ ${S.games.filter(g=>g.rev).length} p/ revisar`:'');
+  tab==1?games():tab==3?batch():space();
 }
 function games(){
-  const l=S.games.filter(g=>(!fs||g.status===fs)&&(!fp||g.plat===fp)&&g.name.toLowerCase().includes(q.toLowerCase()));
+  const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||g.plat===fp)&&g.name.toLowerCase().includes(q.toLowerCase()));
   let h=`<input id="q" placeholder="🔍 Buscar jogo..." value="${esc(q)}">
-  <div class="row"><select id="fs"><option value="">Todos os status</option>${ST.map(s=>`<option ${fs==s?'selected':''}>${s}</option>`).join('')}</select>
+  <div class="row"><select id="fs"><option value="">Todos os status</option><option value="__rev" ${fs==='__rev'?'selected':''}>⚠️ Para revisar</option>${ST.map(s=>`<option ${fs==s?'selected':''}>${s}</option>`).join('')}</select>
   <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option ${fp==s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   if(!l.length)h+=`<div class="card m">${S.games.length?'Nenhum jogo encontrado.':'Nenhum jogo ainda. Toque no + para adicionar o primeiro.'}</div>`;
   l.forEach(g=>{const s=gb(g);
     h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
     <div class="gi"><b>${esc(g.name)}</b><div class="m">${g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
-    <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span><span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
+    <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
   $('#main').innerHTML=h;
   $('#q').oninput=e=>{q=e.target.value;const p=e.target.selectionStart;games();const i=$('#q');i.focus();i.setSelectionRange(p,p)};
   $('#fs').onchange=e=>{fs=e.target.value;games()};$('#fp').onchange=e=>{fp=e.target.value;games()};
@@ -158,7 +159,8 @@ function form(id){
   <div><label>Capa (opcional)</label><input type="file" accept="image/*" id="im"><button class="g" id="rc" type="button" style="margin-top:6px;padding:6px 10px">Remover capa</button></div></div>
   ${f('name','Nome do jogo')}
   <div class="row"><button class="g" id="ai1" type="button">✨ Preencher pelo nome</button><button class="g" id="ai2" type="button">📷 Preencher pela foto</button></div>
-  <input type="file" accept="image/*" id="im2" hidden><div class="m" id="aim"></div>
+  <input type="file" accept="image/*" id="im2" hidden><button class="g" id="ai3" type="button" style="width:100%;margin-top:6px">🖼️ Buscar capa online pelo nome</button>
+  <div id="cg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px"></div><div class="m" id="aim"></div>
   <div class="row"><div><label>Plataforma</label><select data-f="plat">${o(['PS2','PS3'],g.plat)}</select></div>
   <div><label>Status</label><select data-f="status">${o(ST,g.status)}</select></div></div>
   <div class="row"><div>${f('genre','Gênero')}</div><div>${f('year','Ano','number')}</div></div>
@@ -183,11 +185,29 @@ function form(id){
     msg('✨ Consultando o Claude...');
     try{const o=await sm.json(prompt,blob?{images:[blob],modelTier:'default'}:{modelTier:'quick'});
       if(!o||o.certain===false&&!o.name&&!o.genre){msg('Não tive certeza de qual jogo é. Confira o nome ou tente outra foto.');return}
-      const n=fill(o);msg(o.certain===false?'Preenchi o que deu, mas sem certeza. Confira os dados.':`Pronto! ${n} campo(s) atualizado(s). Confira antes de salvar.`)
+      const n=fill(o);if(!g.img&&n)setTimeout(cap,300);msg(o.certain===false?'Preenchi o que deu, mas sem certeza. Confira os dados.':`Pronto! ${n} campo(s) atualizado(s). Confira antes de salvar.`)
     }catch(e){msg(e&&e.code==='not_granted'?'Você não permitiu o uso do Claude. Preencha manualmente.':'Não consegui buscar agora. Tente de novo em instantes.')}};
   const P='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. Responda SOMENTE com JSON no formato {"name":"título oficial","plat":"PS2" ou "PS3","genre":"gênero em português","year":ano de lançamento (número),"dev":"desenvolvedora","pub":"publicadora","players":número máximo de jogadores locais,"certain":true ou false}. Não invente: se não tiver certeza de algum campo, deixe vazio, e se não souber qual é o jogo use certain false. ';
   $('#ai1').onclick=()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
     ask(P+'Jogo digitado pelo usuário: "'+nm+'". Se houver versões em PS2 e PS3, prefira a plataforma '+d.querySelector('[data-f="plat"]').value+'.')};
+  const useCover=u=>{const i=new Image();i.crossOrigin='anonymous';
+    i.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=120;const m=Math.min(i.width,i.height);
+      c.getContext('2d').drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,120,120);g.img=c.toDataURL('image/jpeg',.75)}catch(e){g.img=u}
+      $('#pv').innerHTML=`<img src="${g.img}" alt="">`;$('#cg').innerHTML='';msg('Capa aplicada. Toque em Salvar.')};
+    i.onerror=()=>{g.img=u;$('#pv').innerHTML=`<img src="${u}" alt="">`;$('#cg').innerHTML='';msg('Capa aplicada (precisa de internet para aparecer). Toque em Salvar.')};
+    i.src=u};
+  const cap=async()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
+    msg('🔎 Buscando capas...');$('#cg').innerHTML='';
+    try{const pl=d.querySelector('[data-f="plat"]').value==='PS3'?'PlayStation 3':'PlayStation 2';
+      const u='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=8&gsrsearch='+encodeURIComponent(nm+' '+pl+' video game')+'&prop=pageimages&piprop=thumbnail&pithumbsize=300';
+      const j=await (await fetch(u)).json();
+      const p=Object.values((j.query&&j.query.pages)||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
+      if(!p.length){msg('Não achei capa. Tente o nome em inglês ou use uma foto.');return}
+      $('#cg').innerHTML=p.map((x,k)=>`<button type="button" class="g" data-k="${k}" style="padding:4px"><img src="${esc(x.thumbnail.source)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:6px"><div class="m" style="font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title)}</div></button>`).join('');
+      msg('Toque na capa certa:');
+      $('#cg').querySelectorAll('button').forEach(b=>b.onclick=()=>useCover(p[b.dataset.k].thumbnail.source));
+    }catch(e){msg('Não consegui buscar agora (sem internet ou bloqueado neste ambiente). Use a foto da capa.')}};
+  $('#ai3').onclick=cap;
   $('#ai2').onclick=()=>$('#im2').click();
   $('#im2').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{
     const sc=(w)=>{const c=document.createElement('canvas'),k=Math.min(1,w/Math.max(i.width,i.height));c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);return c};
@@ -199,8 +219,92 @@ function form(id){
   if($('#dl'))$('#dl').onclick=e=>tt(e.target,()=>{S.games=S.games.filter(x=>x!==g0);save();d.close();render()});
   $('#sv').onclick=()=>{d.querySelectorAll('[data-f]').forEach(e=>g[e.dataset.f]=e.type=='number'&&e.value!==''?+e.value:e.value);
     if(!g.name.trim()){alert('Digite o nome do jogo.');return}
-    if(isNew)S.games.unshift(g);else Object.assign(g0,g);save();d.close();render()};
+    g.rev=false;if(isNew)S.games.unshift(g);else Object.assign(g0,g);save();d.close();render()};
 }
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let busy=false;
+function parseNames(t){return t.split(/\r?\n/).map(x=>x.replace(/^\s*(?:\d{1,3}\s*[.)]\s+|[-•*]\s+)/,'').trim()).filter(Boolean)}
+async function wikiCover(nm,plat){
+  const pl=plat==='PS3'?'PlayStation 3':'PlayStation 2';
+  const u='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=6&gsrsearch='+encodeURIComponent(nm+' '+pl+' video game')+'&prop=pageimages&piprop=thumbnail&pithumbsize=300';
+  const j=await (await fetch(u)).json();
+  const p=Object.values((j.query&&j.query.pages)||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index);
+  return p.length?p[0].thumbnail.source:null}
+function toThumb(u){return new Promise(res=>{const i=new Image();i.crossOrigin='anonymous';
+  i.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=120;const m=Math.min(i.width,i.height);
+    c.getContext('2d').drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,120,120);res(c.toDataURL('image/jpeg',.75))}catch(e){res(u)}};
+  i.onerror=()=>res(u);i.src=u})}
+const PB='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. Receberá uma lista JSON de jogos (nome e plataforma). Responda SOMENTE com JSON {"items":[...]} com exatamente um item por jogo, na mesma ordem, cada um no formato {"genre":"gênero em português","year":ano de lançamento (número),"dev":"desenvolvedora","pub":"publicadora","players":máximo de jogadores locais (número),"certain":true ou false}. Não invente: se não souber qual é o jogo ou algum campo, deixe vazio e use certain false. Lista: ';
+async function enrich(ids,wantInfo,wantCov,say){
+  if(busy){say('Já existe uma busca em andamento. Aguarde terminar.');return null}
+  busy=true;const out={info:0,cov:0,notes:[]};
+  try{
+    const G=ids.map(id=>S.games.find(g=>g.id===id)).filter(Boolean);
+    if(wantInfo){
+      let sm=null;try{sm=await claude.use('sample')}catch(e){}
+      if(!sm)out.notes.push('Dados automáticos indisponíveis aqui.');
+      else{const todo=G.filter(g=>!g.genre);
+        for(let i=0;i<todo.length;i+=15){
+          const ch=todo.slice(i,i+15);say(`✨ Dados dos jogos ${i+1} a ${i+ch.length} de ${todo.length}...`);
+          try{const o=await sm.json(PB+JSON.stringify(ch.map(g=>({nome:g.name,plataforma:g.plat}))),{modelTier:'quick'});
+            const it=(o&&o.items)||[];
+            ch.forEach((g,k)=>{const r=it[k];if(!r||r.certain===false)return;let n=0;
+              if(r.genre&&!g.genre){g.genre=String(r.genre);n++}
+              if(r.year&&!g.year){g.year=+r.year||'';n++}
+              if(r.dev&&!g.dev){g.dev=String(r.dev);n++}
+              if(r.pub&&!g.pub){g.pub=String(r.pub);n++}
+              if(r.players&&!g.players){g.players=+r.players||'';n++}
+              if(n)out.info++});
+            save();
+          }catch(e){if(e&&e.code==='not_granted'){out.notes.push('Você não permitiu o uso do Claude para os dados.');break}out.notes.push('Falhou a busca de dados de alguns jogos.')}
+        }}
+    }
+    if(wantCov){const todo=G.filter(g=>!g.img);let k=0;
+      for(const g of todo){k++;say(`🖼️ Capa ${k} de ${todo.length}: ${g.name}`);
+        try{const u=await wikiCover(g.name,g.plat);if(u){g.img=await toThumb(u);out.cov++;save()}}
+        catch(e){out.notes.push('Busca de capas indisponível agora (sem internet ou bloqueada neste ambiente).');break}
+        await sleep(250)}}
+  }finally{busy=false}
+  return out}
+function batch(){
+  const rv=S.games.filter(g=>g.rev).length,o=(a,v)=>a.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('');
+  $('#main').innerHTML=`<div class="card"><b>📝 Adicionar vários jogos</b>
+  <div class="m">Cole ou digite um título por linha. O app cria os jogos, busca gênero, ano, desenvolvedora e capinha, e deixa todos marcados <b>"revisar"</b> para você conferir depois.</div>
+  <label>Títulos (um por linha)</label><textarea id="bl" rows="10" placeholder="God of War II&#10;Shadow of the Colossus&#10;Gran Turismo 4"></textarea>
+  <div class="row"><div><label>Plataforma</label><select id="bpl">${o(['PS2','PS3'],'PS2')}</select></div>
+  <div><label>Status</label><select id="bst">${o(ST,'Procurando')}</select></div></div>
+  <label>Armazenado em (opcional)</label><select id="bhd">${o(['',...S.hds.map(h=>h.n),'Nuvem','Disco original'],'')}</select>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bi" checked style="width:auto"> Buscar dados (gênero, ano, desenvolvedora...)</label>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bc" checked style="width:auto"> Buscar capas online</label>
+  <button id="bgo" style="width:100%;margin-top:10px">Adicionar e buscar</button>
+  <div class="m" id="bmsg" style="margin-top:8px"></div></div>
+  <div class="card"><b>Conferência</b><div class="m" id="brv" style="margin:4px 0 8px">${rv} jogo(s) para revisar.</div>
+  <div class="row"><button class="g" id="bsee">Ver os para revisar</button><button class="g" id="bfix">Completar capas/dados que faltam</button></div>
+  <button class="g" id="bok" style="width:100%">Marcar todos como conferidos</button></div>`;
+  const say=t=>{const e=$('#bmsg');if(e)e.textContent=t};
+  const done=()=>{const e=$('#brv');if(e)e.textContent=S.games.filter(g=>g.rev).length+' jogo(s) para revisar.'};
+  const report=(r,ids)=>{if(!r)return;const G=ids.map(id=>S.games.find(g=>g.id===id)).filter(Boolean);
+    const sem=G.filter(g=>!g.img).map(g=>g.name),semd=G.filter(g=>!g.genre).length;
+    say(`Pronto! ${G.length-sem.length} de ${G.length} com capa; ${G.length-semd} com dados.`+(sem.length?` Sem capa: ${sem.slice(0,8).join(', ')}${sem.length>8?' e mais '+(sem.length-8):''}.`:'')+(r.notes.length?' '+[...new Set(r.notes)].join(' '):'')+' Toque em "Ver os para revisar" para conferir.');done()};
+  $('#bgo').onclick=async()=>{
+    const names=parseNames($('#bl').value);if(!names.length){say('Digite pelo menos um título.');return}
+    const plat=$('#bpl').value,st=$('#bst').value,hd=$('#bhd').value;
+    const seen=new Set(S.games.filter(g=>g.plat===plat).map(g=>g.name.toLowerCase()));let dup=0;const nw=[];
+    names.forEach((n,i)=>{const k=n.toLowerCase();if(seen.has(k)){dup++;return}seen.add(k);
+      nw.push({id:Date.now()+i,name:n,plat,status:st,unit:'GB',hd,backup:'Não',rev:true})});
+    if(!nw.length){say(`Todos os ${dup} títulos já estavam na coleção.`);return}
+    S.games=[...nw,...S.games];save();$('#bl').value='';done();
+    say(`${nw.length} jogo(s) adicionado(s)${dup?` (${dup} repetido(s) ignorado(s))`:''}. Buscando informações...`);
+    const ids=nw.map(g=>g.id);
+    if(!$('#bi').checked&&!$('#bc').checked){say(`${nw.length} jogo(s) adicionado(s)${dup?` (${dup} repetido(s) ignorado(s))`:''}.`);return}
+    report(await enrich(ids,$('#bi').checked,$('#bc').checked,say),ids)};
+  $('#bsee').onclick=()=>{fs='__rev';fp='';q='';tab=1;render()};
+  $('#bfix').onclick=async()=>{const ids=S.games.filter(g=>!g.img||!g.genre).map(g=>g.id);if(!ids.length){say('Nada faltando: todos têm capa e dados.');return}
+    say(`Completando ${ids.length} jogo(s)...`);report(await enrich(ids,true,true,say),ids)};
+  $('#bok').onclick=e=>tt(e.target,()=>{S.games.forEach(g=>g.rev=false);save();batch()});
+}
+$('#t3').onclick=()=>{tab=3;render()};
 $('#t1').onclick=()=>{tab=1;render()};$('#t2').onclick=()=>{tab=2;render()};$('#fab').onclick=()=>form();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{render()}catch(e){document.getElementById('main').innerHTML='<div class="card red">Erro ao iniciar: '+esc(e.message)+'</div>'}
