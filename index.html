@@ -66,8 +66,8 @@ function instHTML(){return `<div class="card"><b>📲 Salvar no celular</b>`+(dp
 function tt(b,fn){if(b.dataset.arm){fn();return}b.dataset.arm=1;const o=b.textContent;b.textContent='Toque de novo p/ confirmar';setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.textContent=o}},3500)}
 function used(n){return S.games.filter(g=>g.hd===n&&g.status!=='Procurando').reduce((a,g)=>a+gb(g),0)}
 function setCount(shown){
-  const n2=S.games.filter(g=>g.plat==='PS2').length,n3=S.games.filter(g=>g.plat==='PS3').length,t=S.games.length;
-  const e=$('#sub2');if(e)e.textContent=`PS2: ${n2} · PS3: ${n3} · Total: ${t}`+(shown!=null&&shown!==t?` · mostrando ${shown}`:'')}
+  const n2=S.games.filter(g=>g.plat==='PS2').length,n3=S.games.filter(g=>g.plat==='PS3').length,t=S.games.length,p3=S.games.filter(g=>g.plat==='PS2'&&g.ps3ok).length;
+  const e=$('#sub2');if(e)e.textContent=`PS2: ${n2} · PS3: ${n3}${p3?` (+${p3} do PS2)`:''} · Total: ${t}`+(shown!=null&&shown!==t?` · mostrando ${shown}`:'')}
 function render(){
   $('#t1').className=tab==1?'on':'';$('#t2').className=tab==2?'on':'';$('#t3').className=tab==3?'on':'';$('#fab').style.display=tab==1?'':'none';
   const c=s=>S.games.filter(g=>g.status===s).length;
@@ -76,22 +76,23 @@ function render(){
   tab==1?games():tab==3?batch():space();
 }
 function games(){
-  const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||g.plat===fp)&&g.name.toLowerCase().includes(q.toLowerCase()));
+  const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||g.plat===fp||(fp==='PS3'&&g.plat==='PS2'&&g.ps3ok))&&g.name.toLowerCase().includes(q.toLowerCase()));
   let h=(S.games.length&&(!S.lastBk||Date.now()-S.lastBk>6048e5)?`<div class="card" style="border-color:var(--warn)"><b>⚠️ Faça um backup</b><div class="m">Seus jogos ficam só neste navegador e somem se você limpar os dados dele. ${S.lastBk?'Último backup: '+new Date(S.lastBk).toLocaleDateString('pt-BR'):'Você ainda não fez nenhum backup.'}</div><button id="bn" style="width:100%;margin-top:8px">⬇️ Baixar backup agora</button></div>`:'')+`<input id="q" placeholder="🔍 Buscar jogo..." value="${esc(q)}">
   <div class="row"><select id="fs"><option value="">Todos os status</option><option value="__rev" ${fs==='__rev'?'selected':''}>⚠️ Para revisar</option>${ST.map(s=>`<option ${fs==s?'selected':''}>${s}</option>`).join('')}</select>
-  <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option ${fp==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option value="${s}" ${fp==s?'selected':''}>${s==='PS3'?'PS3 (+ PS2 que roda)':s}</option>`).join('')}</select></div>
   <select id="so" aria-label="Ordenar">${[['az','Ordem: A → Z'],['za','Ordem: Z → A'],['gb','Ordem: maior tamanho primeiro'],['rec','Ordem: últimos adicionados primeiro']].map(([v,t])=>`<option value="${v}" ${(S.sort||'az')===v?'selected':''}>${t}</option>`).join('')}</select>`;
+  if(fp==='PS2'&&l.length)h+=`<div class="row"><button class="g" id="m3on">Marcar estes ${l.length} como "roda no PS3"</button><button class="g" id="m3off">Desmarcar todos</button></div>`;
   if(!l.length)h+=`<div class="card m">${S.games.length?'Nenhum jogo encontrado.':'Nenhum jogo ainda. Toque no + para adicionar o primeiro.'}</div>`;
   setCount(l.length);
   const md=S.sort||'az',cm=(a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true,sensitivity:'base'});
   if(md==='az')l.sort(cm);else if(md==='za')l.sort((a,b)=>cm(b,a));else if(md==='gb')l.sort((a,b)=>gb(b)-gb(a)||cm(a,b));
-  l.forEach(g=>{const s=gb(g);
+  l.forEach(g=>{const s=gb(g);const as3=fp==='PS3'&&g.plat==='PS2';const tag=as3?'<span class="bd" style="background:#0891b2">jogo de PS2</span>':(g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':'');
     h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
-    <div class="gi"><b>${esc(g.name)}</b><div class="m">${g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
-    <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
+    <div class="gi"><b>${esc(g.name)}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
+    <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}${tag}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
   $('#main').innerHTML=h;
   $('#q').oninput=e=>{q=e.target.value;const p=e.target.selectionStart;games();const i=$('#q');i.focus();i.setSelectionRange(p,p)};
-  $('#fs').onchange=e=>{fs=e.target.value;games()};$('#fp').onchange=e=>{fp=e.target.value;games()};$('#so').onchange=e=>{S.sort=e.target.value;save();games()};if($('#bn'))$('#bn').onclick=dlBk;
+  $('#fs').onchange=e=>{fs=e.target.value;games()};$('#fp').onchange=e=>{fp=e.target.value;games()};$('#so').onchange=e=>{S.sort=e.target.value;save();games()};if($('#m3on')){$('#m3on').onclick=e=>tt(e.target,()=>{l.forEach(g=>g.ps3ok=true);save();games()});$('#m3off').onclick=e=>tt(e.target,()=>{l.forEach(g=>g.ps3ok=false);save();games()})}if($('#bn'))$('#bn').onclick=dlBk;
   document.querySelectorAll('.game').forEach(e=>e.onclick=()=>form(e.dataset.id));
 }
 function space(){
@@ -182,6 +183,7 @@ function form(id){
   <div id="cg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px"></div><div class="m" id="aim"></div>
   <div class="row"><div><label>Plataforma</label><select data-f="plat">${o(['PS2','PS3'],g.plat)}</select></div>
   <div><label>Status</label><select data-f="status">${o(ST,g.status)}</select></div></div>
+  <div id="p3w" style="display:${g.plat==='PS2'?'block':'none'}"><label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="p3ok" ${g.ps3ok?'checked':''} style="width:auto"> Este jogo de PS2 também roda no PS3</label></div>
   <div class="row"><div>${f('genre','Gênero')}</div><div>${f('year','Ano','number')}</div></div>
   <div class="row"><div>${f('dev','Desenvolvedora')}</div><div>${f('pub','Publicadora')}</div></div>
   <div class="row"><div>${f('players','Nº jogadores','number')}</div><div><label>Formato</label><select data-f="fmt">${o(['','Disco','ISO','PKG','Pasta','Outro'],g.fmt||'')}</select></div></div>
@@ -192,12 +194,13 @@ function form(id){
   ${f('obs','Observações')}
   <div class="row" style="margin-top:14px;position:sticky;bottom:-16px;background:var(--bg);padding:10px 0">${isNew?'':'<button class="d" id="dl">Excluir</button>'}<button class="g" id="x">Cancelar</button><button id="sv">Salvar</button></div>`;
   d.showModal();
+  {const pl=d.querySelector('[data-f="plat"]');pl.onchange=()=>{$('#p3w').style.display=pl.value==='PS2'?'block':'none'}}
   $('#im').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{
     const c=document.createElement('canvas');c.width=c.height=120;const x=c.getContext('2d'),m=Math.min(i.width,i.height);
     x.drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,120,120);g.img=c.toDataURL('image/jpeg',.7);$('#pv').innerHTML=`<img src="${g.img}" alt="">`};i.src=r.result};r.readAsDataURL(fl)};
   const msg=t=>$('#aim').textContent=t;
   const fill=o=>{let n=0;['name','genre','year','dev','pub','players'].forEach(k=>{const e=d.querySelector(`[data-f="${k}"]`);if(e&&o[k]){e.value=o[k];n++}});
-    if(o.plat==='PS2'||o.plat==='PS3')d.querySelector('[data-f="plat"]').value=o.plat;return n};
+    if(o.plat==='PS2'||o.plat==='PS3'){d.querySelector('[data-f="plat"]').value=o.plat;$('#p3w').style.display=o.plat==='PS2'?'block':'none'}return n};
   const ask=async(prompt,blob)=>{
     let sm=null;try{sm=await claude.use('sample')}catch(e){}
     if(!sm){msg('Esse recurso não está disponível aqui. Preencha manualmente.');return}
@@ -238,6 +241,7 @@ function form(id){
   if($('#dl'))$('#dl').onclick=e=>tt(e.target,()=>{S.games=S.games.filter(x=>x!==g0);save();d.close();render()});
   $('#sv').onclick=()=>{d.querySelectorAll('[data-f]').forEach(e=>g[e.dataset.f]=e.type=='number'&&e.value!==''?+e.value:e.value);
     if(!g.name.trim()){alert('Digite o nome do jogo.');return}
+    g.ps3ok=g.plat==='PS2'&&$('#p3ok').checked;
     g.rev=false;if(isNew)S.games.unshift(g);else Object.assign(g0,g);save();d.close();render()};
 }
 
@@ -306,7 +310,7 @@ function fileThumb(f){return new Promise(res=>{const u=URL.createObjectURL(f),i=
 function putCover(nm,img,create,plat,st,hd){
   const n=norm(nm);if(!n)return null;
   let g=S.games.find(x=>norm(x.name)===n&&x.plat===plat)||S.games.find(x=>norm(x.name)===n),made=false;
-  if(!g){if(!create)return null;g={id:Date.now()+Math.floor(Math.random()*1e6),name:nm.trim(),plat,status:st,unit:'GB',hd,backup:'Não',rev:true};S.games.unshift(g);made=true}
+  if(!g){if(!create)return null;g={id:Date.now()+Math.floor(Math.random()*1e6),name:nm.trim(),plat,status:st,unit:'GB',hd,backup:'Não',rev:true,ps3ok:plat==='PS2'&&!!(($('#bp3')||{}).checked)};S.games.unshift(g);made=true}
   g.img=img;return {g,made}}
 async function bulkCovers(files,create,info,plat,st,hd,say){
   const res={ok:0,made:0,bad:[],skip:[],pend:0},madeIds=[];
@@ -345,6 +349,7 @@ function batch(){
   <div class="row"><div><label>Plataforma</label><select id="bpl">${o(['PS2','PS3'],'PS2')}</select></div>
   <div><label>Status</label><select id="bst">${o(ST,'Procurando')}</select></div></div>
   <label>Armazenado em (opcional)</label><select id="bhd">${o(['',...S.hds.map(h=>h.n),'Nuvem','Disco original'],'')}</select>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bp3" style="width:auto"> Jogos de PS2 que também rodam no PS3</label>
   <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bi" checked style="width:auto"> Buscar dados (gênero, ano, desenvolvedora...)</label>
   <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bc" checked style="width:auto"> Buscar capas online</label>
   <button id="bgo" style="width:100%;margin-top:10px">Adicionar e buscar</button>
@@ -369,7 +374,7 @@ function batch(){
     const plat=$('#bpl').value,st=$('#bst').value,hd=$('#bhd').value;
     const seen=new Set(S.games.filter(g=>g.plat===plat).map(g=>g.name.toLowerCase()));let dup=0;const nw=[];
     names.forEach((n,i)=>{const k=n.toLowerCase();if(seen.has(k)){dup++;return}seen.add(k);
-      nw.push({id:Date.now()+i,name:n,plat,status:st,unit:'GB',hd,backup:'Não',rev:true})});
+      nw.push({id:Date.now()+i,name:n,plat,status:st,unit:'GB',hd,backup:'Não',rev:true,ps3ok:plat==='PS2'&&!!$('#bp3').checked})});
     if(!nw.length){say(`Todos os ${dup} títulos já estavam na coleção.`);return}
     S.games=[...nw,...S.games];save();$('#bl').value='';done();
     say(`${nw.length} jogo(s) adicionado(s)${dup?` (${dup} repetido(s) ignorado(s))`:''}. Buscando informações...`);
