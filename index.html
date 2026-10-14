@@ -54,6 +54,12 @@ if(!S||!S.games)S={hds:[{n:'HD 500 GB',c:500}],games:[]};
 if(!S.p3){S.p3=1;if(!S.hds.some(h=>h.n==='Memória do PS3'))S.hds.push({n:'Memória do PS3',c:0});try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 if(!S.nb){S.nb=1;if(!S.hds.some(h=>h.n==='Notebook'))S.hds.push({n:'Notebook',c:0});try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+const REG={U:['EUA','EUA (NTSC-U)'],E:['Europa','Europa (PAL)'],P:['Japão','Japão (NTSC-J)'],J:['Japão','Japão (NTSC-J)'],A:['Ásia','Ásia'],H:['Ásia','Ásia (Hong Kong)'],K:['Coreia','Coreia']};
+function regionOf(id,long){const c=String(id||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(!/^[A-Z]{4}\d{5}$/.test(c))return '';const r=REG[c[2]];return r?r[long?1:0]:''}
+function migGid(){let n=0;S.games.forEach(g=>{if(g.gid)return;const m=String(g.name).match(/\s*[\(\[]\s*([A-Za-z]{4}[-_ .]?\d{3}[.\-]?\d{2})\s*[\)\]]\s*$/);
+  if(!m)return;const nm=g.name.slice(0,m.index).trim();if(!nm)return;g.name=nm;g.gid=m[1].toUpperCase();g.gidShow=true;n++});
+  if(n){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}return n}
+migGid();
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Não consegui salvar (sem espaço). Faça backup e remova algumas capas.')}};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -76,8 +82,8 @@ function render(){
   tab==1?games():tab==3?batch():space();
 }
 function games(){
-  const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||g.plat===fp||(fp==='PS3'&&g.plat==='PS2'&&g.ps3ok))&&g.name.toLowerCase().includes(q.toLowerCase()));
-  let h=(S.games.length&&(!S.lastBk||Date.now()-S.lastBk>6048e5)?`<div class="card" style="border-color:var(--warn)"><b>⚠️ Faça um backup</b><div class="m">Seus jogos ficam só neste navegador e somem se você limpar os dados dele. ${S.lastBk?'Último backup: '+new Date(S.lastBk).toLocaleDateString('pt-BR'):'Você ainda não fez nenhum backup.'}</div><button id="bn" style="width:100%;margin-top:8px">⬇️ Baixar backup agora</button></div>`:'')+`<input id="q" placeholder="🔍 Buscar jogo..." value="${esc(q)}">
+  const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||g.plat===fp||(fp==='PS3'&&g.plat==='PS2'&&g.ps3ok))&&(g.name+' '+(g.gid||'')).toLowerCase().includes(q.toLowerCase()));
+  let h=(S.games.length&&(!S.lastBk||Date.now()-S.lastBk>6048e5)?`<div class="card" style="border-color:var(--warn)"><b>⚠️ Faça um backup</b><div class="m">Seus jogos ficam só neste navegador e somem se você limpar os dados dele. ${S.lastBk?'Último backup: '+new Date(S.lastBk).toLocaleDateString('pt-BR'):'Você ainda não fez nenhum backup.'}</div><button id="bn" style="width:100%;margin-top:8px">⬇️ Baixar backup agora</button></div>`:'')+`<input id="q" placeholder="🔍 Buscar por nome ou ID..." value="${esc(q)}">
   <div class="row"><select id="fs"><option value="">Todos os status</option><option value="__rev" ${fs==='__rev'?'selected':''}>⚠️ Para revisar</option>${ST.map(s=>`<option ${fs==s?'selected':''}>${s}</option>`).join('')}</select>
   <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option value="${s}" ${fp==s?'selected':''}>${s==='PS3'?'PS3 (+ PS2 que roda)':s}</option>`).join('')}</select></div>
   <select id="so" aria-label="Ordenar">${[['az','Ordem: A → Z'],['za','Ordem: Z → A'],['gb','Ordem: maior tamanho primeiro'],['rec','Ordem: últimos adicionados primeiro']].map(([v,t])=>`<option value="${v}" ${(S.sort||'az')===v?'selected':''}>${t}</option>`).join('')}</select>`;
@@ -88,7 +94,7 @@ function games(){
   if(md==='az')l.sort(cm);else if(md==='za')l.sort((a,b)=>cm(b,a));else if(md==='gb')l.sort((a,b)=>gb(b)-gb(a)||cm(a,b));
   l.forEach(g=>{const s=gb(g);const as3=fp==='PS3'&&g.plat==='PS2';const tag=as3?'<span class="bd" style="background:#0891b2">jogo de PS2</span>':(g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':'');
     h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
-    <div class="gi"><b>${esc(g.name)}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
+    <div class="gi"><b style="display:flex;gap:6px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${esc(g.name)}</span>${g.gid&&g.gidShow!==false?`<span style="flex:none;font-weight:500;color:var(--mut)">(${esc(g.gid)}${regionOf(g.gid)?' · '+regionOf(g.gid):''})</span>`:''}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
     <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}${tag}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
   $('#main').innerHTML=h;
   $('#q').oninput=e=>{q=e.target.value;const p=e.target.selectionStart;games();const i=$('#q');i.focus();i.setSelectionRange(p,p)};
@@ -128,7 +134,7 @@ function dlBk(){try{const b=new Blob([JSON.stringify(S)],{type:'application/json
   a.href=u;a.download='colecao-jogos-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);
   S.lastBk=Date.now();save();setTimeout(()=>{alert('Backup baixado. Procure o arquivo na pasta Downloads do celular.');render()},500)}
   catch(e){alert('Não consegui baixar o arquivo aqui. Use o botão "📤 Backup" para copiar o texto.')}}
-function rfile(f){const r=new FileReader();r.onload=()=>{try{const n=JSON.parse(r.result);if(!n.games||!n.hds)throw 0;S=n;save();render();alert('Backup restaurado: '+n.games.length+' jogo(s).')}catch(e){alert('Arquivo de backup inválido.')}};r.readAsText(f)}
+function rfile(f){const r=new FileReader();r.onload=()=>{try{const n=JSON.parse(r.result);if(!n.games||!n.hds)throw 0;S=n;migGid();save();render();alert('Backup restaurado: '+n.games.length+' jogo(s).')}catch(e){alert('Arquivo de backup inválido.')}};r.readAsText(f)}
 function imp(file){
   if(typeof XLSX==='undefined'){alert('Não consegui carregar o leitor de planilhas. Verifique a internet e tente de novo.');return}
   const r=new FileReader();r.onload=()=>{try{
@@ -165,7 +171,7 @@ function backup(out){
   d.showModal();$('#x').onclick=()=>d.close();
   $('#ok').onclick=()=>{const t=$('#bt');
     if(out){t.select();try{navigator.clipboard.writeText(t.value)}catch(e){}try{document.execCommand('copy')}catch(e){};$('#ok').textContent='Copiado ✓';S.lastBk=Date.now();save()}
-    else{try{const n=JSON.parse(t.value);if(!n.games||!n.hds)throw 0;S=n;save();d.close();render()}catch(e){alert('Texto de backup inválido.')}}};
+    else{try{const n=JSON.parse(t.value);if(!n.games||!n.hds)throw 0;S=n;migGid();save();d.close();render()}catch(e){alert('Texto de backup inválido.')}}};
 }
 function form(id){
   const g0=S.games.find(x=>x.id==id),g=g0?{...g0}:{id:Date.now(),name:'',plat:'PS2',status:'Procurando',unit:'GB',hd:'',backup:'Não'};
@@ -176,6 +182,9 @@ function form(id){
   <div class="row"><div><div class="cv" id="pv" style="width:72px;height:72px">${g.img?`<img src="${g.img}" alt="">`:'🎮'}</div></div>
   <div><label>Capa (opcional)</label><input type="file" accept="image/*" id="im"><button class="g" id="rc" type="button" style="margin-top:6px;padding:6px 10px">Remover capa</button></div></div>
   ${f('name','Nome do jogo')}
+  ${f('gid','ID do jogo (ex.: SLUS-20957, BCES00510)','text','autocapitalize="characters" autocomplete="off" placeholder="Código da caixa ou do disco"')}
+  <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="gshow" ${g.gidShow!==false?'checked':''} style="width:auto"> Mostrar o ID depois do nome na lista</label>
+  <div class="m" id="grg"></div>
   <div class="row"><button class="g" id="ai1" type="button">✨ Preencher pelo nome</button><button class="g" id="ai2" type="button">📷 Preencher pela foto</button></div>
   <input type="file" accept="image/*" id="im2" hidden><button class="g" id="ai3" type="button" style="width:100%;margin-top:6px">🖼️ Buscar capa online pelo nome</button>
   <div class="row"><input id="curl" placeholder="Ou cole o link de uma imagem" inputmode="url" style="flex:3"><button class="g" id="cu" type="button" style="flex:1">Usar</button></div>
@@ -194,6 +203,7 @@ function form(id){
   ${f('obs','Observações')}
   <div class="row" style="margin-top:14px;position:sticky;bottom:-16px;background:var(--bg);padding:10px 0">${isNew?'':'<button class="d" id="dl">Excluir</button>'}<button class="g" id="x">Cancelar</button><button id="sv">Salvar</button></div>`;
   d.showModal();
+  {const gi=d.querySelector('[data-f="gid"]'),up=()=>{const r=regionOf(gi.value,true);$('#grg').textContent=r?'Versão provável pelo código: '+r:''};gi.oninput=up;up()}
   {const pl=d.querySelector('[data-f="plat"]');pl.onchange=()=>{$('#p3w').style.display=pl.value==='PS2'?'block':'none'}}
   $('#im').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{
     const c=document.createElement('canvas');c.width=c.height=120;const x=c.getContext('2d'),m=Math.min(i.width,i.height);
@@ -241,6 +251,7 @@ function form(id){
   if($('#dl'))$('#dl').onclick=e=>tt(e.target,()=>{S.games=S.games.filter(x=>x!==g0);save();d.close();render()});
   $('#sv').onclick=()=>{d.querySelectorAll('[data-f]').forEach(e=>g[e.dataset.f]=e.type=='number'&&e.value!==''?+e.value:e.value);
     if(!g.name.trim()){alert('Digite o nome do jogo.');return}
+    g.gid=String(g.gid||'').trim().toUpperCase();g.gidShow=$('#gshow').checked;
     g.ps3ok=g.plat==='PS2'&&$('#p3ok').checked;
     g.rev=false;if(isNew)S.games.unshift(g);else Object.assign(g0,g);save();d.close();render()};
 }
