@@ -99,7 +99,7 @@ function games(){
   $('#main').innerHTML=h;
   $('#q').oninput=e=>{q=e.target.value;const p=e.target.selectionStart;games();const i=$('#q');i.focus();i.setSelectionRange(p,p)};
   $('#fs').onchange=e=>{fs=e.target.value;games()};$('#fp').onchange=e=>{fp=e.target.value;games()};$('#so').onchange=e=>{S.sort=e.target.value;save();games()};if($('#m3on')){$('#m3on').onclick=e=>tt(e.target,()=>{l.forEach(g=>g.ps3ok=true);save();games()});$('#m3off').onclick=e=>tt(e.target,()=>{l.forEach(g=>g.ps3ok=false);save();games()})}if($('#bn'))$('#bn').onclick=dlBk;
-  document.querySelectorAll('.game').forEach(e=>e.onclick=()=>form(e.dataset.id));
+  document.querySelectorAll('.game').forEach(e=>e.onclick=()=>view(e.dataset.id));
 }
 function space(){
   let tc=0,tu=0;
@@ -173,6 +173,18 @@ function backup(out){
     if(out){t.select();try{navigator.clipboard.writeText(t.value)}catch(e){}try{document.execCommand('copy')}catch(e){};$('#ok').textContent='Copiado ✓';S.lastBk=Date.now();save()}
     else{try{const n=JSON.parse(t.value);if(!n.games||!n.hds)throw 0;S=n;migGid();save();d.close();render()}catch(e){alert('Texto de backup inválido.')}}};
 }
+function view(id){
+  const g=S.games.find(x=>x.id==id);if(!g){form(id);return}
+  const d=$('#dlg'),sz=gb(g),rg=g.gid?regionOf(g.gid,true):'';
+  const row=(l,v)=>v||v===0?`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff14"><span style="flex:0 0 40%;color:var(--mut)">${l}</span><span style="flex:1;word-break:break-word">${esc(v)}</span></div>`:'';
+  d.innerHTML=`<div style="display:flex;justify-content:center"><div class="cv" style="width:150px;height:150px;font-size:56px">${g.img?`<img src="${g.img}" alt="">`:(g.plat==='PS3'?'🎮':'🕹️')}</div></div>
+  <div style="text-align:center;margin:10px 0 4px"><b style="font-size:19px">${esc(g.name)}</b></div>
+  <div style="text-align:center;margin-bottom:8px"><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':''}${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}</div>
+  <b>📋 Ficha técnica</b>
+  <div style="margin-top:4px">${row('Plataforma',g.plat)}${row('ID do jogo',g.gid)}${row('Versão',rg)}${row('Gênero',g.genre)}${row('Ano',g.year)}${row('Desenvolvedora',g.dev)}${row('Publicadora',g.pub)}${row('Nº de jogadores',g.players)}${row('Formato',g.fmt)}${row('Tamanho',sz?fmt(sz)+' GB':'')}${row('Armazenado em',g.hd)}${row('Pasta / detalhes',g.folder)}${row('Tem backup?',g.backup)}${row('Observações',g.obs)}</div>
+  <div class="row" style="margin-top:14px"><button class="g" id="vx">Fechar</button><button id="ve">✏️ Editar</button></div>`;
+  d.showModal();$('#vx').onclick=()=>d.close();
+  $('#ve').onclick=()=>{d.close();form(id)}}
 function form(id){
   const g0=S.games.find(x=>x.id==id),g=g0?{...g0}:{id:Date.now(),name:'',plat:'PS2',status:'Procurando',unit:'GB',hd:'',backup:'Não'};
   const isNew=!g0,d=$('#dlg');
