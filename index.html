@@ -96,7 +96,7 @@ function games(){
   if(md==='az')l.sort(cm);else if(md==='za')l.sort((a,b)=>cm(b,a));else if(md==='gb')l.sort((a,b)=>gb(b)-gb(a)||cm(a,b));
   l.forEach(g=>{const s=gb(g);const as3=fp==='PS3'&&g.plat==='PS2';const tag=as3?'<span class="bd" style="background:#0891b2">jogo de PS2</span>':(g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':'');
     h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
-    <div class="gi"><b style="display:flex;gap:6px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${esc(g.name)}</span>${g.gid&&g.gidShow!==false?`<span style="flex:none;font-weight:500;color:var(--mut)">(${esc(g.gid)}${regionOf(g.gid)?' · '+regionOf(g.gid):''})</span>`:''}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>
+    <div class="gi"><b style="display:flex;gap:6px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${esc(g.name)}</span>${g.gid&&g.gidShow!==false?`<span style="flex:none;font-weight:500;color:var(--mut)">(${esc(g.gid)}${regionOf(g.gid)?' · '+regionOf(g.gid):''})</span>`:''}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>${g.lang?`<div class="m">🗣️ ${esc(g.lang)}</div>`:''}
     <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}${tag}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
   $('#main').innerHTML=h;
   $('#q').oninput=e=>{q=e.target.value;const p=e.target.selectionStart;games();const i=$('#q');i.focus();i.setSelectionRange(p,p)};
@@ -185,7 +185,7 @@ function view(id){
   <div style="text-align:center;margin:10px 0 4px"><b style="font-size:19px">${esc(g.name)}</b></div>
   <div style="text-align:center;margin-bottom:8px"><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':''}${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}</div>
   <b>📋 Ficha técnica</b>
-  <div style="margin-top:4px">${row('Plataforma',g.plat)}${row('ID do jogo',g.gid)}${row('Versão',rg)}${row('Gênero',g.genre)}${row('Ano',g.year)}${row('Desenvolvedora',g.dev)}${row('Publicadora',g.pub)}${row('Nº de jogadores',g.players)}${row('Formato',g.fmt)}${row('Tamanho',sz?fmt(sz)+' GB':'')}${row('Armazenado em',g.hd)}${row('Pasta / detalhes',g.folder)}${row('Tem backup?',g.backup)}${row('Observações',g.obs)}</div>
+  <div style="margin-top:4px">${row('Plataforma',g.plat)}${row('ID do jogo',g.gid)}${row('Versão',rg)}${row('Gênero',g.genre)}${row('Ano',g.year)}${row('Desenvolvedora',g.dev)}${row('Publicadora',g.pub)}${row('Nº de jogadores',g.players)}${row('Formato',g.fmt)}${row('Idioma',g.lang)}${row('Tamanho',sz?fmt(sz)+' GB':'')}${row('Armazenado em',g.hd)}${row('Pasta / detalhes',g.folder)}${row('Tem backup?',g.backup)}${row('Observações',g.obs)}</div>
   <div class="row" style="margin-top:14px"><button class="g" id="vx">Fechar</button><button id="ve">✏️ Editar</button></div>`;
   d.showModal();$('#vx').onclick=()=>d.close();
   $('#ve').onclick=()=>{d.close();form(id)}}
@@ -217,6 +217,7 @@ function form(id){
   <label>Armazenado em</label><select data-f="hd">${o(['',...S.hds.map(h=>h.n),'Nuvem','Disco original'],g.hd)}</select>
   ${f('folder','Pasta / detalhes')}
   <label>Tem backup?</label><select data-f="backup">${o(['Sim','Não'],g.backup)}</select>
+  <label>Idioma do jogo (dublado / legendado)</label><input data-f="lang" list="langs" placeholder="Ex.: Dublado PT-BR + legenda PT-BR" value="${esc(g.lang)}"><datalist id="langs"><option value="Dublado PT-BR"><option value="Legendado PT-BR"><option value="Dublado e legendado PT-BR"><option value="Dublado PT-BR, legenda em inglês"><option value="Só inglês"><option value="Só espanhol"><option value="Vozes em inglês, legenda PT-BR"></datalist>
   ${f('obs','Observações')}
   <div class="row" style="margin-top:14px;position:sticky;bottom:-16px;background:var(--bg);padding:10px 0">${isNew?'':'<button class="d" id="dl">Excluir</button>'}<button class="g" id="x">Cancelar</button><button id="sv">Salvar</button></div>`;
   d.showModal();
