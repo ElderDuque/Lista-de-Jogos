@@ -266,7 +266,7 @@ function form(id){
   $('#ai4').onclick=()=>$('#im3').click();
   $('#im3').onchange=async e=>{const fl=e.target.files[0];e.target.value='';if(!fl)return;
     try{const its=await readShot(fl,msg);
-      if(!its.length){msg('Não encontrei dados de jogo nesse print. Precisa aparecer a linha "Título: ...". Tente um print mais nítido ou preencha manualmente.');return}
+      if(!its.length){msg('Não encontrei dados de jogo nesse print. Precisa aparecer a linha "Título: ..." ou um texto "X é um jogo de...". Tente um print mais nítido ou preencha manualmente.'+(window._lastOCR?' Texto que consegui ler: «'+window._lastOCR.replace(/\s+/g,' ').trim().slice(0,220)+'»':''));return}
       const o=its[0],n=fillShot(o);
       msg(`Pronto! ${n} campo(s) preenchido(s) pelo print.`+(o.badId?` O ID "${o.badId}" não parece um código válido e foi ignorado.`:'')+(its.length>1?` O print tem ${its.length} jogos e usei o primeiro. Para adicionar todos, use a aba Lote → "Adicionar por print".`:'')+' Confira os dados e o ID letra por letra (O/0, I/1).'+(o.genre||o.dev||o.year?'':' Para gênero, ano e desenvolvedora, toque em ✨ Preencher pelo nome.'));
       if(!g.img&&o.name)setTimeout(cap,300)
@@ -437,9 +437,15 @@ function parseProse(txt){
   const clean=s=>String(s||'').replace(/\s+/g,' ').replace(/^[\s,;:.\-–—]+|[\s,;:.\-–—]+$/g,'').trim();
   // frase de definição: "X é um jogo ..." / "X is a ... game ..."
   const re=/\b(?:[e€]|foi)\s+(?:um|uma)\s+(?:jogo|videogame|video game|game|titulo)\b|\bis\s+an?\s+(?:[\w\- ]{0,40}?)(?:video ?game|game)\b/;
-  const m=D.match(re);if(!m)return {};
-  const ls=N.lastIndexOf('\n',m.index)+1;
-  let nm=clean(N.slice(ls,m.index)).replace(/^[^A-Za-z0-9À-ÿ]+/,'').replace(/\s*\([^)]*\)\s*$/,'');
+  let m=D.match(re),fb=false;
+  if(!m){ // plano B: sem a frase "é um jogo", mas com cara de ficha de jogo
+    if(!/\b(jogo|game|videogame|desenvolvid|developed|publicad|published|playstation|ps[23])\b/.test(D))return {};
+    const ln=N.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    const t=ln.slice(0,10).find(x=>x.length>=3&&x.length<=50&&!/[.!?]$/.test(x)&&!/^(pesquisa|todas|imagens|videos|v[ií]deos|not[ií]cias|mais|ferramentas|google|wikip|www|http|ver |sobre|resultados)/i.test(dsa(x))&&/[A-Za-z]{3}/.test(x));
+    if(!t)return {};
+    m={index:Math.max(0,D.indexOf(dsa(t).toLowerCase())+t.length),0:''};fb=true}
+  const ls=fb?0:N.lastIndexOf('\n',m.index)+1;
+  let nm=fb?clean(N.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,10).find(x=>dsa(x).toLowerCase().length>=3&&D.indexOf(dsa(x).toLowerCase())===m.index-x.length)||''):clean(N.slice(ls,m.index)).replace(/^[^A-Za-z0-9À-ÿ]+/,'').replace(/\s*\([^)]*\)\s*$/,'');
   if(!nm){const pl=N.lastIndexOf('\n',ls-2)+1;nm=clean(N.slice(pl,Math.max(pl,ls-1))).replace(/^[^A-Za-z0-9À-ÿ]+/,'')}
   nm=nm.split(/\s[>·|•]\s*/).pop().trim();
   if(!nm||nm.length>60)return {};
@@ -482,7 +488,8 @@ async function readShotOCR(file,say){
   const c=await ocrCanvas(file);if(!c)throw {code:'badimg'};
   say('📸 Lendo o print...');
   let r;try{r=await Tesseract.recognize(c,'por')}catch(e){throw {code:'ocrload'}}
-  return parseSpec(r&&r.data&&r.data.text).map(cleanShot).filter(x=>x&&x.name)}
+  window._lastOCR=(r&&r.data&&r.data.text)||'';
+  return parseSpec(window._lastOCR).map(cleanShot).filter(x=>x&&x.name)}
 /*OCR_END*/
 async function readShot(file,say){
   let sm=null;try{sm=await claude.use('sample')}catch(e){}
