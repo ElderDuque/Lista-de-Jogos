@@ -382,7 +382,7 @@ function renderPend(){const e=$('#mpend');if(!e)return;
     if($('#mi').checked&&ids.length){const r=await enrich(ids,true,false,say2);if(r)say2(`${ok} capa(s) aplicada(s), ${made} jogo(s) criado(s) com dados.`)}
     const v=$('#brv');if(v)v.textContent=S.games.filter(g=>g.rev).length+' jogo(s) para revisar.'};
   $('#mclr').onclick=e=>tt(e.target,()=>{PEND=[];renderPend();say2('Capas restantes descartadas.')})}
-const SHOTP='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. A imagem anexada é um print (de site, lista de arquivos, janela, tela do console ou propriedades de arquivo) com dados de um ou mais jogos. Leia SOMENTE o que está escrito na imagem. Não complete nada com seu conhecimento e não invente. Responda SOMENTE com JSON no formato {"items":[{"name":"título do jogo como escrito, sem o código e sem a extensão do arquivo","gid":"ID ou serial como escrito (ex.: SLUS-20957, BCUS99134) ou vazio","plat":"PS2 ou PS3, só se estiver escrito ou for claro, senão vazio","size":número do tamanho com ponto decimal ou vazio,"unit":"MB ou GB (se estiver em bytes, converta para GB)","fmt":"Disco, ISO, PKG, Pasta ou Outro (.iso=ISO, .pkg=PKG, pasta=Pasta) ou vazio","genre":"gênero em português só se estiver escrito, senão vazio","year":ano só se estiver escrito,"dev":"desenvolvedora só se estiver escrita","pub":"publicadora só se estiver escrita","players":número só se estiver escrito,"folder":"nome do arquivo ou da pasta como aparece, se houver"}]}. Um item por jogo visível, na ordem em que aparecem. Se a imagem não tiver dados de jogos, responda {"items":[]}.';
+const SHOTP='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. A imagem anexada é um print (de site, lista de arquivos, janela, tela do console ou propriedades de arquivo) com dados de um ou mais jogos. Leia SOMENTE o que está escrito na imagem. Não complete nada com seu conhecimento e não invente. Responda SOMENTE com JSON no formato {"items":[{"name":"título do jogo como escrito, sem o código e sem a extensão do arquivo","gid":"ID ou serial como escrito (ex.: SLUS-20957, BCUS99134) ou vazio","plat":"PS2 ou PS3, só se estiver escrito ou for claro, senão vazio","size":número do tamanho com ponto decimal ou vazio,"unit":"MB ou GB (se estiver em bytes, converta para GB)","fmt":"Disco, ISO, PKG, Pasta ou Outro (.iso=ISO, .pkg=PKG, pasta=Pasta) ou vazio","genre":"gênero em português só se estiver escrito, senão vazio","year":ano só se estiver escrito,"dev":"desenvolvedora só se estiver escrita","pub":"publicadora só se estiver escrita","players":número só se estiver escrito,"folder":"nome do arquivo ou da pasta como aparece, se houver"}]}. Um item por jogo visível, na ordem em que aparecem. Resumos em texto corrido (como o da Wikipédia: "Nome é um jogo de ação e aventura de 2010, desenvolvido pela A e publicado pela B") também valem: use o nome que abre a frase e tire dali gênero, ano, desenvolvedora e publicadora. Se a imagem não tiver dados de jogos, responda {"items":[]}.';
 const GREC=/^[A-Z]{4}[-_ .]?\d{3}[.\-]?\d{2}$/;
 function shotBlob(file){return new Promise(res=>{const u=URL.createObjectURL(file),i=new Image();
   i.onload=()=>{const k=Math.min(1,1600/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);
@@ -428,7 +428,41 @@ function parseSpec(txt){
   if(f.size){const s=f.size.replace(/\s+/g,'').match(/([\d]+[.,]?\d*)(gb|gib|g|mb|mib|m)\b/i);if(s){o.size=s[1];o.unit=/^m/i.test(s[2])?'MB':'GB'}}
   const idm=(f.gid||'').toUpperCase().replace(/\s/g,'').match(/[A-Z]{4}[-_]?\d{5}/)||String(txt).toUpperCase().match(/\b[A-Z]{4}[-_ ]?\d{5}\b/);
   if(idm)o.gid=idm[0].replace(/\s/g,'');
-  return o.name?[o]:[]}
+  if(o.name)return [o];
+  const pr=parseProse(txt);return pr.name?[pr]:[]}
+const GACC=s=>s.replace(/\bacao\b/i,'ação').replace(/\bestrategia\b/i,'estratégia').replace(/\bsimulacao\b/i,'simulação').replace(/\bnao\b/i,'não').replace(/\bluta\b/i,'luta').replace(/\bfurtividade\b/i,'furtividade').replace(/\bplataformas\b/i,'plataformas').replace(/\bmusica\b/i,'música').replace(/\bgenero\b/i,'gênero');
+function parseProse(txt){
+  const N=String(txt||'').normalize('NFC'),D=dsa(N).toLowerCase();
+  const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  const clean=s=>String(s||'').replace(/\s+/g,' ').replace(/^[\s,;:.\-–—]+|[\s,;:.\-–—]+$/g,'').trim();
+  // frase de definição: "X é um jogo ..." / "X is a ... game ..."
+  const re=/\b(?:[e€]|foi)\s+(?:um|uma)\s+(?:jogo|videogame|video game|game|titulo)\b|\bis\s+an?\s+(?:[\w\- ]{0,40}?)(?:video ?game|game)\b/;
+  const m=D.match(re);if(!m)return {};
+  const ls=N.lastIndexOf('\n',m.index)+1;
+  let nm=clean(N.slice(ls,m.index)).replace(/^[^A-Za-z0-9À-ÿ]+/,'').replace(/\s*\([^)]*\)\s*$/,'');
+  if(!nm){const pl=N.lastIndexOf('\n',ls-2)+1;nm=clean(N.slice(pl,Math.max(pl,ls-1))).replace(/^[^A-Za-z0-9À-ÿ]+/,'')}
+  nm=nm.split(/\s[>·|•]\s*/).pop().trim();
+  if(!nm||nm.length>60)return {};
+  const o={name:nm};
+  // a frase vai até o ponto final seguido de espaço/maiúscula (ou 600 caracteres)
+  let end=m.index+m[0].length;const rest=D.slice(end,end+600);
+  const stop=rest.search(/\.\s+[a-z]|\.\s*$|\n\n/);
+  const sent=N.slice(m.index,end+(stop<0?rest.length:stop+1)).replace(/\s+/g,' ');
+  const sd=dsa(sent).toLowerCase();
+  const y=sd.match(/\b(19[89]\d|20[0-2]\d)\b/);if(y)o.year=+y[1];
+  let g=sd.match(/\b(?:jogo|videogame|video game|game)\s+(?:eletronico\s+|de computador\s+|de video ?game\s+)?de\s+(.+?)(?:\s+de\s+(?:19|20)\d\d|\s+lancad|\s+desenvolvid|,|\.|$)/);
+  let gs=g?sent.slice(sd.indexOf(g[1]),sd.indexOf(g[1])+g[1].length):'';
+  if(!gs){const e=sd.match(/\ban?\s+(?:(?:19|20)\d\d\s+)?([a-z\- ]{3,40}?)\s+(?:video ?)?game\b/);if(e)gs=sent.slice(sd.indexOf(e[1]),sd.indexOf(e[1])+e[1].length)}
+  gs=clean(gs).replace(/^(?:um|uma|a|an)\s+/i,'');
+  if(gs&&gs.length<=50)o.genre=gs.split(/\s*(?:\/|,|\be\b|\band\b)\s*/i).filter(Boolean).map(x=>cap(GACC(x))).join(' / ');
+  let d=sd.match(/(?:desenvolvid[oa]s?|developed)\s+(?:pel[oa]s?|por|by)\s+(.+?)(?:\s+e\s+(?:publicad|distribuid|lancad)|\s+and\s+(?:published|distributed)|,|\.|$)/);
+  if(d){const v=clean(sent.slice(sd.indexOf(d[1]),sd.indexOf(d[1])+d[1].length));if(v&&v.length<=50)o.dev=v}
+  let p=sd.match(/(?:publicad[oa]s?|distribuid[oa]s?|published|distributed)\s+(?:pel[oa]s?|por|by)\s+(.+?)(?:\.|,|\s+em\s+\d|\s+in\s+\d|$)/);
+  if(p){const v=clean(sent.slice(sd.indexOf(p[1]),sd.indexOf(p[1])+p[1].length));if(v&&v.length<=50)o.pub=v}
+  const plat=dsa(N).toLowerCase();
+  if(/\bps ?3\b|playstation ?3/.test(plat)&&!/\bps ?2\b|playstation ?2/.test(plat))o.plat='PS3';
+  else if(/\bps ?2\b|playstation ?2/.test(plat)&&!/\bps ?3\b|playstation ?3/.test(plat))o.plat='PS2';
+  return o}
 let _ocrP=null;
 function loadOCR(){if(window.Tesseract)return Promise.resolve();
   if(!_ocrP)_ocrP=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=()=>ok();s.onerror=()=>{_ocrP=null;no({code:'ocrload'})};document.head.appendChild(s)});
