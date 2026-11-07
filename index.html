@@ -270,7 +270,7 @@ function form(id){
   <div id="p3w" style="display:${g.plat==='PS2'?'block':'none'}"><label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="p3ok" ${g.ps3ok?'checked':''} style="width:auto"> Este jogo de PS2 também roda no PS3</label></div>
   <div class="row"><div>${f('genre','Gênero')}</div><div>${f('year','Ano','number')}</div></div>
   <div class="row"><div>${f('dev','Desenvolvedora')}</div><div>${f('pub','Publicadora')}</div></div>
-  <div class="row"><div>${f('players','Nº jogadores','number')}</div><div><label>Formato</label><select data-f="fmt">${o(['','Disco','ISO','PKG','Pasta','Outro'],g.fmt||'')}</select></div></div>
+  <div class="row"><div><label>Nº jogadores / modo</label><input data-f="players" list="pls" placeholder="ex.: 1-4 ou Multijogador online" value="${esc(g.players)}"><datalist id="pls"><option value="1"><option value="2"><option value="1-2"><option value="1-4"><option value="Multijogador online"><option value="Local + online"><option value="Co-op online"><option value="Multijogador local"></datalist></div><div><label>Formato</label><select data-f="fmt">${o(['','Disco','ISO','PKG','Pasta','Outro'],g.fmt||'')}</select></div></div>
   <div class="row"><div>${f('size','Tamanho','number','min="0" step="any" inputmode="decimal"')}</div><div><label>Unidade</label><select data-f="unit">${o(['GB','MB'],g.unit)}</select></div></div>
   <label>Armazenado em</label><select data-f="hd">${o(['',...S.hds.map(h=>h.n),'Nuvem','Disco original'],g.hd)}</select>
   ${f('folder','Pasta / detalhes')}
@@ -295,8 +295,17 @@ function form(id){
       if(!o||o.certain===false&&!o.name&&!o.genre){msg('Não tive certeza de qual jogo é. Confira o nome ou tente outra foto.');return}
       const n=fill(o);if(!g.img&&n)setTimeout(cap,300);msg(o.certain===false?'Preenchi o que deu, mas sem certeza. Confira os dados.':`Pronto! ${n} campo(s) atualizado(s). Confira antes de salvar.`)
     }catch(e){msg(e&&e.code==='not_granted'?'Você não permitiu o uso do Claude. Preencha manualmente.':'Não consegui buscar agora. Tente de novo em instantes.')}};
-  const P='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. Responda SOMENTE com JSON no formato {"name":"título oficial","plat":"PS2" ou "PS3","genre":"gênero em português","year":ano de lançamento (número),"dev":"desenvolvedora","pub":"publicadora","players":número máximo de jogadores locais,"certain":true ou false}. Não invente: se não tiver certeza de algum campo, deixe vazio, e se não souber qual é o jogo use certain false. ';
-  $('#ai1').onclick=()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
+  const P='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. Responda SOMENTE com JSON no formato {"name":"título oficial","plat":"PS2" ou "PS3","genre":"gênero em português","year":ano de lançamento (número),"dev":"desenvolvedora","pub":"publicadora","players":"jogadores em texto curto, ex.: 1, 1-4 ou Multijogador online","certain":true ou false}. Não invente: se não tiver certeza de algum campo, deixe vazio, e se não souber qual é o jogo use certain false. ';
+  $('#ai1').onclick=async()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
+    let hs=null;try{hs=await claude.use('sample')}catch(e){}
+    if(!hs){msg('🔎 Buscando na Wikipédia...');
+      try{const o=await wikiLookup(nm);
+        if(!o){msg('Não achei esse jogo na Wikipédia. Tente o nome em inglês ou preencha manualmente.');return}
+        const keep={};['genre','year','dev','pub'].forEach(k=>{const e=d.querySelector(`[data-f="${k}"]`);if(o[k]&&e&&!e.value)keep[k]=o[k]});
+        const n=fill(keep);if(!g.img)setTimeout(cap,300);
+        msg(n?`Pronto! ${n} campo(s) preenchido(s) pela Wikipédia (só os vazios). Confira antes de salvar.`:'Achei o jogo, mas os campos já estavam preenchidos ou a Wikipédia não trouxe dados.')}
+      catch(e){msg('Não consegui buscar agora (sem internet ou bloqueado). Preencha manualmente.')}
+      return}
     ask(P+'Jogo digitado pelo usuário: "'+nm+'". Se houver versões em PS2 e PS3, prefira a plataforma '+d.querySelector('[data-f="plat"]').value+'.')};
   const useCover=u=>{const i=new Image();i.crossOrigin='anonymous';
     i.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=120;const m=Math.min(i.width,i.height);
@@ -366,7 +375,7 @@ function toThumb(u){return new Promise(res=>{const i=new Image();i.crossOrigin='
   i.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=120;const m=Math.min(i.width,i.height);
     c.getContext('2d').drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,120,120);res(c.toDataURL('image/jpeg',.75))}catch(e){res(u)}};
   i.onerror=()=>res(u);i.src=u})}
-const PB='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. Receberá uma lista JSON de jogos (nome e plataforma). Responda SOMENTE com JSON {"items":[...]} com exatamente um item por jogo, na mesma ordem, cada um no formato {"genre":"gênero em português","year":ano de lançamento (número),"dev":"desenvolvedora","pub":"publicadora","players":máximo de jogadores locais (número),"certain":true ou false}. Não invente: se não souber qual é o jogo ou algum campo, deixe vazio e use certain false. Lista: ';
+const PB='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. Receberá uma lista JSON de jogos (nome e plataforma). Responda SOMENTE com JSON {"items":[...]} com exatamente um item por jogo, na mesma ordem, cada um no formato {"genre":"gênero em português","year":ano de lançamento (número),"dev":"desenvolvedora","pub":"publicadora","players":"jogadores em texto curto, ex.: 1, 1-4 ou Multijogador online","certain":true ou false}. Não invente: se não souber qual é o jogo ou algum campo, deixe vazio e use certain false. Lista: ';
 async function enrich(ids,wantInfo,wantCov,say){
   if(busy){say('Já existe uma busca em andamento. Aguarde terminar.');return null}
   busy=true;const out={info:0,cov:0,notes:[]};
@@ -385,7 +394,7 @@ async function enrich(ids,wantInfo,wantCov,say){
               if(r.year&&!g.year){g.year=+r.year||'';n++}
               if(r.dev&&!g.dev){g.dev=String(r.dev);n++}
               if(r.pub&&!g.pub){g.pub=String(r.pub);n++}
-              if(r.players&&!g.players){g.players=+r.players||'';n++}
+              if(r.players&&!g.players){g.players=String(r.players).slice(0,40);n++}
               if(n)out.info++});
             save();
           }catch(e){if(e&&e.code==='not_granted'){out.notes.push('Você não permitiu o uso do Claude para os dados.');break}out.notes.push('Falhou a busca de dados de alguns jogos.')}
@@ -440,7 +449,7 @@ function renderPend(){const e=$('#mpend');if(!e)return;
     if($('#mi').checked&&ids.length){const r=await enrich(ids,true,false,say2);if(r)say2(`${ok} capa(s) aplicada(s), ${made} jogo(s) criado(s) com dados.`)}
     const v=$('#brv');if(v)v.textContent=S.games.filter(g=>g.rev).length+' jogo(s) para revisar.'};
   $('#mclr').onclick=e=>tt(e.target,()=>{PEND=[];renderPend();say2('Capas restantes descartadas.')})}
-const SHOTP='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. A imagem anexada é um print (de site, lista de arquivos, janela, tela do console ou propriedades de arquivo) com dados de um ou mais jogos. Leia SOMENTE o que está escrito na imagem. Não complete nada com seu conhecimento e não invente. Responda SOMENTE com JSON no formato {"items":[{"name":"título do jogo como escrito, sem o código e sem a extensão do arquivo","gid":"ID ou serial como escrito (ex.: SLUS-20957, BCUS99134) ou vazio","plat":"PS2 ou PS3, só se estiver escrito ou for claro, senão vazio","size":número do tamanho com ponto decimal ou vazio,"unit":"MB ou GB (se estiver em bytes, converta para GB)","fmt":"Disco, ISO, PKG, Pasta ou Outro (.iso=ISO, .pkg=PKG, pasta=Pasta) ou vazio","genre":"gênero em português só se estiver escrito, senão vazio","year":ano só se estiver escrito,"dev":"desenvolvedora só se estiver escrita","pub":"publicadora só se estiver escrita","players":número só se estiver escrito,"folder":"nome do arquivo ou da pasta como aparece, se houver"}]}. Um item por jogo visível, na ordem em que aparecem. Resumos em texto corrido (como o da Wikipédia: "Nome é um jogo de ação e aventura de 2010, desenvolvido pela A e publicado pela B") também valem: use o nome que abre a frase e tire dali gênero, ano, desenvolvedora e publicadora. Se a imagem não tiver dados de jogos, responda {"items":[]}.';
+const SHOTP='Você ajuda a catalogar jogos de PlayStation 2 e PlayStation 3. A imagem anexada é um print (de site, lista de arquivos, janela, tela do console ou propriedades de arquivo) com dados de um ou mais jogos. Leia SOMENTE o que está escrito na imagem. Não complete nada com seu conhecimento e não invente. Responda SOMENTE com JSON no formato {"items":[{"name":"título do jogo como escrito, sem o código e sem a extensão do arquivo","gid":"ID ou serial como escrito (ex.: SLUS-20957, BCUS99134) ou vazio","plat":"PS2 ou PS3, só se estiver escrito ou for claro, senão vazio","size":número do tamanho com ponto decimal ou vazio,"unit":"MB ou GB (se estiver em bytes, converta para GB)","fmt":"Disco, ISO, PKG, Pasta ou Outro (.iso=ISO, .pkg=PKG, pasta=Pasta) ou vazio","genre":"gênero em português só se estiver escrito, senão vazio","year":ano só se estiver escrito,"dev":"desenvolvedora só se estiver escrita","pub":"publicadora só se estiver escrita","players":"jogadores só se estiver escrito (ex.: 1-4 ou Multijogador online)","folder":"nome do arquivo ou da pasta como aparece, se houver"}]}. Um item por jogo visível, na ordem em que aparecem. Resumos em texto corrido (como o da Wikipédia: "Nome é um jogo de ação e aventura de 2010, desenvolvido pela A e publicado pela B") também valem: use o nome que abre a frase e tire dali gênero, ano, desenvolvedora e publicadora. Se a imagem não tiver dados de jogos, responda {"items":[]}.';
 const GREC=/^[A-Z]{4}[-_ .]?\d{3}[.\-]?\d{2}$/;
 function shotBlob(file){return new Promise(res=>{const u=URL.createObjectURL(file),i=new Image();
   i.onload=()=>{const k=Math.min(1,1600/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);
@@ -455,7 +464,7 @@ function cleanShot(it){if(!it)return null;const o={};
   const sz=parseFloat(String(it.size).replace(',','.'));if(sz>0){o.size=sz;o.unit=String(it.unit).toUpperCase()==='MB'?'MB':'GB'}
   if(['Disco','ISO','PKG','Pasta','Outro'].includes(it.fmt))o.fmt=it.fmt;
   ['genre','dev','pub','folder'].forEach(k=>{if(it[k])o[k]=String(it[k]).trim()});
-  const y=+it.year;if(y>1990&&y<2030)o.year=y;const pl=+it.players;if(pl>0&&pl<=16)o.players=pl;
+  const y=+it.year;if(y>1990&&y<2030)o.year=y;const pl=String(it.players||'').trim();if(pl&&pl.length<=40)o.players=/^\d+$/.test(pl)?+pl:pl;
   return o}
 /*OCR_BEGIN*/
 const dsa=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -482,7 +491,7 @@ function parseSpec(txt){
   if(f.pub)o.pub=f.pub.replace(/\s+/g,' ').trim();
   if(f.genre)o.genre=f.genre.replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').replace(/\s*,\s*$/,'').trim();
   if(f.date){const y=f.date.match(/\b(19[89]\d|20[0-2]\d)\b/);if(y)o.year=+y[1]}
-  if(f.players){const p=f.players.match(/\d+/);if(p&&+p[0]>0&&+p[0]<=16)o.players=+p[0]}
+  if(f.players){const t=f.players.replace(/\s+/g,' ').trim();if(/^\d{1,2}$/.test(t)){if(+t>0&&+t<=16)o.players=+t}else if(t&&t.length<=40)o.players=t}
   if(f.size){const s=f.size.replace(/\s+/g,'').match(/([\d]+[.,]?\d*)(gb|gib|g|mb|mib|m)\b/i);if(s){o.size=s[1];o.unit=/^m/i.test(s[2])?'MB':'GB'}}
   const idm=(f.gid||'').toUpperCase().replace(/\s/g,'').match(/[A-Z]{4}[-_]?\d{5}/)||String(txt).toUpperCase().match(/\b[A-Z]{4}[-_ ]?\d{5}\b/);
   if(idm)o.gid=idm[0].replace(/\s/g,'');
@@ -513,20 +522,34 @@ function parseProse(txt){
   const stop=rest.search(/\.\s+[a-z]|\.\s*$|\n\n/);
   const sent=N.slice(m.index,end+(stop<0?rest.length:stop+1)).replace(/\s+/g,' ');
   const sd=dsa(sent).toLowerCase();
-  const y=sd.match(/\b(19[89]\d|20[0-2]\d)\b/);if(y)o.year=+y[1];
-  let g=sd.match(/\b(?:jogo|videogame|video game|game)\s+(?:eletronico\s+|de computador\s+|de video ?game\s+)?de\s+(.+?)(?:\s+de\s+(?:19|20)\d\d|\s+lancad|\s+desenvolvid|,|\.|$)/);
+  const y=sd.match(/\b(19[89]\d|20[0-2]\d)\b/);if(y)o.year=+y[1];if(!o.year){const y2=D.slice(m.index,m.index+500).match(/\b(19[89]\d|20[0-2]\d)\b/);if(y2)o.year=+y2[1]}
+  let g=sd.match(/\b(?:jogo|videogame|video game|game)\s+(?:eletronico\s+|de computador\s+|de video ?game\s+)?de\s+(.+?)(?:\s+de\s+(?:19|20)\d\d|\s+lancad|\s+desenvolvid|\s+criad|\s+onde|\s+em que|\s+publicad|\s+para\s|\s+que\s|,|\.|$)/);
   let gs=g?sent.slice(sd.indexOf(g[1]),sd.indexOf(g[1])+g[1].length):'';
   if(!gs){const e=sd.match(/\ban?\s+(?:(?:19|20)\d\d\s+)?([a-z\- ]{3,40}?)\s+(?:video ?)?game\b/);if(e)gs=sent.slice(sd.indexOf(e[1]),sd.indexOf(e[1])+e[1].length)}
-  gs=clean(gs).replace(/^(?:um|uma|a|an)\s+/i,'');
+  gs=clean(gs.replace(/\([^)]*\)?/g,' ')).replace(/^(?:um|uma|a|an)\s+/i,'');
   if(gs&&gs.length<=50)o.genre=gs.split(/\s*(?:\/|,|\be\b|\band\b)\s*/i).filter(Boolean).map(x=>cap(GACC(x))).join(' / ');
-  let d=sd.match(/(?:desenvolvid[oa]s?|developed)\s+(?:pel[oa]s?|por|by)\s+(.+?)(?:\s+e\s+(?:publicad|distribuid|lancad)|\s+and\s+(?:published|distributed)|,|\.|$)/);
-  if(d){const v=clean(sent.slice(sd.indexOf(d[1]),sd.indexOf(d[1])+d[1].length));if(v&&v.length<=50)o.dev=v}
-  let p=sd.match(/(?:publicad[oa]s?|distribuid[oa]s?|published|distributed)\s+(?:pel[oa]s?|por|by)\s+(.+?)(?:\.|,|\s+em\s+\d|\s+in\s+\d|$)/);
-  if(p){const v=clean(sent.slice(sd.indexOf(p[1]),sd.indexOf(p[1])+p[1].length));if(v&&v.length<=50)o.pub=v}
+  const strip=v=>clean(v).replace(/^(?:(?:a|o|as|os|the)\s+)?(?:(?:empresa|desenvolvedora|desenvolvedor|produtora|editora|publicadora|estudio|companhia|distribuidora|company|studio|developer)\s+)+(?:[a-zà-ú]+\s+)?(?=[A-Z0-9])/,'');
+  let d=sd.match(/(?:desenvolvid[oa]s?|developed)(\s+e\s+publicad[oa]s?|\s+and\s+published)?\s+(?:pel[oa]s?|por|by)\s+(.+?)(?:\s+para\s|\s+for\s|\s+e\s+(?:publicad|distribuid|lancad)|\s+and\s+(?:published|distributed)|\s+em\s+\d|\s+in\s+\d|,|\.|$)/);
+  if(d){const v=strip(sent.slice(sd.indexOf(d[2]),sd.indexOf(d[2])+d[2].length));if(v&&v.length<=50){o.dev=v;if(d[1])o.pub=v}}
+  let p=sd.match(/(?:publicad[oa]s?|distribuid[oa]s?|published|distributed)\s+(?:pel[oa]s?|por|by)\s+(.+?)(?:\s+para\s|\s+for\s|\.|,|\s+em\s+\d|\s+in\s+\d|$)/);
+  if(p){const v=strip(sent.slice(sd.indexOf(p[1]),sd.indexOf(p[1])+p[1].length));if(v&&v.length<=50)o.pub=v}
   const plat=dsa(N).toLowerCase();
   if(/\bps ?3\b|playstation ?3/.test(plat)&&!/\bps ?2\b|playstation ?2/.test(plat))o.plat='PS3';
   else if(/\bps ?2\b|playstation ?2/.test(plat)&&!/\bps ?3\b|playstation ?3/.test(plat))o.plat='PS2';
   return o}
+
+const GEN_EN={'action-adventure':'Ação / Aventura','action':'Ação','adventure':'Aventura','role-playing':'RPG','roleplaying':'RPG','shooter':'Tiro','third-person shooter':'Tiro em terceira pessoa','first-person shooter':'Tiro em primeira pessoa','racing':'Corrida','fighting':'Luta','sports':'Esporte','platform':'Plataforma','puzzle':'Quebra-cabeça','sandbox':'Sandbox','survival':'Sobrevivência','stealth':'Furtividade','open world':'Mundo aberto','horror':'Terror','survival horror':'Survival horror','strategy':'Estratégia','simulation':'Simulação','music':'Música','rhythm':'Ritmo','hack and slash':'Hack and slash','beat em up':"Beat 'em up"};
+async function wikiLookup(name){
+  const nk=s=>dsa(s).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(),q0=nk(name);
+  for(const lg of ['pt','en']){
+    const q=lg==='pt'?name+' jogo eletrônico':name+' video game';
+    const r=await fetch(`https://${lg}.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=5&prop=extracts&exintro=1&explaintext=1&exsentences=4`);
+    const j=await r.json();const pg=Object.values((j.query&&j.query.pages)||{}).sort((a,b)=>a.index-b.index);
+    for(const p of pg){if(!p.extract)continue;const o=parseProse(p.extract.replace(/\s*\n+\s*/g,' '));
+      if(!o.name)continue;const n1=nk(o.name);if(!(n1.includes(q0)||q0.includes(n1)))continue;
+      if(lg==='en'&&o.genre)o.genre=o.genre.split(' / ').map(x=>GEN_EN[x.toLowerCase()]||x).join(' / ');
+      o.name=name;return o}}
+  return null}
 let _ocrP=null;
 function loadOCR(){if(window.Tesseract)return Promise.resolve();
   if(!_ocrP)_ocrP=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=()=>ok();s.onerror=()=>{_ocrP=null;no({code:'ocrload'})};document.head.appendChild(s)});
