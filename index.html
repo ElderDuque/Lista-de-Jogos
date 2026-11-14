@@ -162,6 +162,7 @@ function games(){
   setCount(l.length);
   const md=S.sort||'az',cm=(a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true,sensitivity:'base'});
   if(md==='az')l.sort(cm);else if(md==='za')l.sort((a,b)=>cm(b,a));else if(md==='gb')l.sort((a,b)=>gb(b)-gb(a)||cm(a,b));
+  VL=l.map(g=>g.id);
   l.forEach(g=>{const s=gb(g);const as3=fp==='PS3'&&g.plat==='PS2';const tag=as3?'<span class="bd" style="background:#0891b2">jogo de PS2</span>':(g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':'');
     h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
     <div class="gi"><b style="display:flex;gap:6px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${esc(g.name)}</span>${g.gid&&g.gidShow!==false?`<span style="flex:none;font-weight:500;color:var(--mut)">(${esc(g.gid)}${regionOf(g.gid)?' · '+regionOf(g.gid):''})</span>`:''}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>${g.lang?`<div class="m">🗣️ ${esc(g.lang)}</div>`:''}
@@ -258,18 +259,28 @@ function zoomImg(src,nome){if(!src)return;let z=document.getElementById('zdlg');
   z.style.cssText='width:100vw;max-width:100vw;height:100vh;max-height:100vh;border:0;border-radius:0;background:#000000f2;padding:0;display:flex;align-items:center;justify-content:center;flex-direction:column';
   z.innerHTML=`<img src="${esc(src)}" alt="" style="max-width:96vw;max-height:84vh;object-fit:contain;border-radius:8px"><div style="color:#e5e7eb;margin-top:12px;font:600 15px system-ui;text-align:center;padding:0 16px">${esc(nome||'')}</div><div style="color:#9ca3af;margin-top:6px;font:13px system-ui">Toque para fechar</div>`;
   z.onclick=()=>{z.close();z.remove()};document.body.appendChild(z);z.showModal()}
-function view(id){
+let VL=[];
+function view(id,dir){
   const g=S.games.find(x=>x.id==id);if(!g){form(id);return}
   const d=$('#dlg'),sz=gb(g),rg=g.gid?regionOf(g.gid,true):'';
   const row=(l,v)=>v||v===0?`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff14"><span style="flex:0 0 40%;color:var(--mut)">${l}</span><span style="flex:1;word-break:break-word">${esc(v)}</span></div>`:'';
-  d.innerHTML=`<div style="display:flex;justify-content:center"><div class="cv" id="vcv" style="width:150px;height:200px;font-size:56px;${g.img?'cursor:zoom-in':''}">${g.img?`<img src="${g.img}" alt="">`:(g.plat==='PS3'?'🎮':'🕹️')}</div></div>${g.img?'<div class="m" style="text-align:center;margin-top:4px">🔍 Toque na capa para ver inteira</div>':''}
+  const vl=VL.length&&VL.includes(g.id)?VL:S.games.map(x=>x.id),vi=vl.indexOf(g.id);
+  d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><button class="g" id="vp" type="button" style="padding:6px 16px;font-size:18px;${vi<=0?'opacity:.3':''}" aria-label="Jogo anterior">‹</button><span class="m">${vi+1} de ${vl.length} · arraste para o lado ↔</span><button class="g" id="vn" type="button" style="padding:6px 16px;font-size:18px;${vi>=vl.length-1?'opacity:.3':''}" aria-label="Próximo jogo">›</button></div><div style="display:flex;justify-content:center"><div class="cv" id="vcv" style="width:150px;height:200px;font-size:56px;${g.img?'cursor:zoom-in':''}">${g.img?`<img src="${g.img}" alt="">`:(g.plat==='PS3'?'🎮':'🕹️')}</div></div>${g.img?'<div class="m" style="text-align:center;margin-top:4px">🔍 Toque na capa para ver inteira</div>':''}
   <div style="text-align:center;margin:10px 0 4px"><b style="font-size:19px">${esc(g.name)}</b></div>
   <div style="text-align:center;margin-bottom:8px"><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':''}${g.alt?'<span class="bd" style="background:#c026d3">PS2 + PS3</span>':''}${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}</div>
   ${g.syn?`<b>📖 Sinopse</b><div style="margin:4px 0 12px;line-height:1.45;white-space:pre-wrap">${esc(g.syn)}</div>`:''}
   <b>📋 Ficha técnica</b>
   <div style="margin-top:4px">${row('Plataforma',g.plat)}${row('ID do jogo',g.gid)}${row('Versão',rg)}${row('Gênero',g.genre)}${row('Ano',g.year)}${row('Desenvolvedora',g.dev)}${row('Publicadora',g.pub)}${row('Nº de jogadores',g.players)}${row('Formato',g.fmt)}${g.alt?row('Também em '+(g.plat==='PS3'?'PS2':'PS3'),[g.altFmt,g.altInfo].filter(Boolean).join(' · ')||'sim'):''}${row('Idioma',g.lang)}${row('Tamanho',sz?fmt(sz)+' GB':'')}${row('Armazenado em',g.hd)}${row('Pasta / detalhes',g.folder)}${row('Tem backup?',g.backup)}${row('Observações',g.obs)}</div>
   <div class="row" style="margin-top:14px"><button class="g" id="vx">Fechar</button><button id="ve">✏️ Editar</button></div>`;
-  d.showModal();$('#vx').onclick=()=>d.close();if(g.img&&$('#vcv'))$('#vcv').onclick=()=>zoomImg(g.img,g.name);
+  if(!d.open)d.showModal();d.scrollTop=0;$('#vx').onclick=()=>d.close();
+  const go=n=>{const j=vi+n;if(j<0||j>=vl.length){d.animate([{transform:'translateX('+(n*-16)+'px)'},{transform:'none'}],160);return}view(vl[j],n)};
+  $('#vp').onclick=()=>go(-1);$('#vn').onclick=()=>go(1);
+  if(dir)d.animate([{transform:'translateX('+(dir*60)+'px)',opacity:.2},{transform:'none',opacity:1}],220);
+  {let x0=0,y0=0,ok=false;
+    d.ontouchstart=e=>{if(!$('#vx')||$('#sv')){ok=false;return}const t=e.touches[0];x0=t.clientX;y0=t.clientY;ok=e.touches.length===1};
+    d.ontouchend=e=>{if(!ok||!$('#vx')||$('#sv'))return;ok=false;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;
+      if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)go(dx<0?1:-1)}}
+  if(g.img&&$('#vcv'))$('#vcv').onclick=()=>zoomImg(g.img,g.name);
   $('#ve').onclick=()=>{d.close();form(id)}}
 function form(id){
   const g0=S.games.find(x=>x.id==id),g=g0?{...g0}:{id:Date.now(),name:'',plat:'PS2',status:'Procurando',unit:'GB',hd:'',backup:'Não'};
