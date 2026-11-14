@@ -299,6 +299,8 @@ function form(id){
   <input type="file" accept="image/*" id="im2" hidden><button class="g" id="ai3" type="button" style="width:100%;margin-top:6px">🖼️ Buscar capa online pelo nome</button>
   <div class="row"><input id="curl" placeholder="Ou cole o link de uma imagem" inputmode="url" style="flex:3"><button class="g" id="cu" type="button" style="flex:1">Usar</button></div>
   <button class="g" id="cgo" type="button" style="width:100%">🔎 Procurar a capa no Google Imagens</button>
+  <button class="g" id="cpaste" type="button" style="width:100%;margin-top:6px">📋 Colar imagem copiada</button>
+  <div class="m">No Google Imagens: abra a imagem, segure o dedo nela → <b>Copiar imagem</b>, volte aqui e toque em "Colar imagem copiada". Sem precisar de print.</div>
   <div id="cg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px"></div><div class="m" id="aim"></div>
   <div class="row"><div><label>Plataforma</label><select data-f="plat">${o(['PS2','PS3'],g.plat)}</select></div>
   <div><label>Status</label><select data-f="status">${o(ST,g.status)}</select></div></div>
@@ -347,8 +349,20 @@ function form(id){
   const useCover=u=>{const i=new Image();i.crossOrigin='anonymous';
     i.onload=()=>{try{g.img=bigImg(i,.75)}catch(e){g.img=u}
       $('#pv').innerHTML=`<img src="${g.img}" alt="">`;$('#cg').innerHTML='';msg('Capa aplicada. Toque em Salvar.')};
-    i.onerror=()=>{g.img=u;$('#pv').innerHTML=`<img src="${u}" alt="">`;$('#cg').innerHTML='';msg('Capa aplicada (precisa de internet para aparecer). Toque em Salvar.')};
+    i.onerror=()=>{const j=new Image();j.crossOrigin='anonymous';
+      j.onload=()=>{try{g.img=bigImg(j,.75)}catch(e){g.img=u}$('#pv').innerHTML=`<img src="${g.img}" alt="">`;$('#cg').innerHTML='';msg('Capa aplicada e salva no app. Toque em Salvar.')};
+      j.onerror=()=>{g.img=u;$('#pv').innerHTML=`<img src="${u}" alt="">`;$('#cg').innerHTML='';msg('Capa aplicada (precisa de internet para aparecer). Toque em Salvar.')};
+      j.src='https://images.weserv.nl/?w=300&url='+encodeURIComponent(u.replace(/^https?:\/\//,''))};
     i.src=u};
+  const useBlob=bl=>{const url=URL.createObjectURL(bl),i=new Image();
+    i.onload=()=>{try{g.img=bigImg(i,.75);$('#pv').innerHTML=`<img src="${g.img}" alt="">`;$('#cg').innerHTML='';msg('✅ Capa colada e salva no app. Toque em Salvar.')}catch(e){msg('Não consegui usar essa imagem.')}URL.revokeObjectURL(url)};
+    i.onerror=()=>{URL.revokeObjectURL(url);msg('Não consegui ler essa imagem.')};i.src=url};
+  $('#cpaste').onclick=async()=>{try{const its=await navigator.clipboard.read();
+      for(const it of its){const ty=it.types.find(t=>t.startsWith('image/'));if(ty){useBlob(await it.getType(ty));return}
+        if(it.types.includes('text/plain')){const tx=(await(await it.getType('text/plain')).text()).trim();if(/^https?:\/\//i.test(tx)){useCover(tx);return}}}
+      msg('Não achei nenhuma imagem copiada. No Google Imagens, segure o dedo na imagem e escolha "Copiar imagem".')}
+    catch(e){msg('O navegador não deixou ler o que você copiou. Dê permissão quando ele perguntar, ou segure o dedo na imagem, escolha "Compartilhar/Salvar" e use "Capa (opcional)" lá em cima.')}};
+  d.onpaste=e=>{if(!$('#cpaste'))return;const fl=[...(e.clipboardData&&e.clipboardData.files||[])].find(x=>/^image\//.test(x.type));if(fl){e.preventDefault();useBlob(fl)}};
   const cap=async()=>{const nm=d.querySelector('[data-f="name"]').value.trim();if(!nm){msg('Digite o nome do jogo primeiro.');return}
     msg('🔎 Buscando capas...');$('#cg').innerHTML='';
     try{const p=await findCovers(nm,d.querySelector('[data-f="plat"]').value);
