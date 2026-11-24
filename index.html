@@ -142,8 +142,8 @@ const hasR=d=>d.r!=null&&d.r!==''&&!isNaN(d.r);
 const freeOf=d=>hasR(d)?+d.r:d.c-used(d.n);
 function used(n){return S.games.filter(g=>g.hd===n&&g.status!=='Procurando').reduce((a,g)=>a+gb(g),0)}
 function setCount(shown){
-  const n2=S.games.filter(g=>g.plat==='PS2').length,n3=S.games.filter(g=>g.plat==='PS3').length,t=S.games.length,p3=S.games.filter(g=>g.plat==='PS2'&&g.ps3ok).length;
-  const e=$('#sub2');if(e)e.textContent=`PS2: ${n2} · PS3: ${n3}${p3?` (+${p3} do PS2)`:''} · Total: ${t}`+(shown!=null&&shown!==t?` · mostrando ${shown}`:'')}
+  const n2=S.games.filter(g=>g.plat==='PS2').length,n3=S.games.filter(g=>g.plat==='PS3').length,nx=S.games.filter(g=>g.plat==='Xbox').length,t=S.games.length,p3=S.games.filter(g=>g.plat==='PS2'&&g.ps3ok).length;
+  const e=$('#sub2');if(e)e.textContent=`PS2: ${n2} · PS3: ${n3}${p3?` (+${p3} do PS2)`:''}${nx?` · Xbox: ${nx}`:''} · Total: ${t}`+(shown!=null&&shown!==t?` · mostrando ${shown}`:'')}
 function render(){
   $('#t1').className=tab==1?'on':'';$('#t2').className=tab==2?'on':'';$('#t3').className=tab==3?'on':'';$('#fab').style.display=tab==1?'':'none';
   const c=s=>S.games.filter(g=>g.status===s).length;
@@ -155,7 +155,7 @@ function games(){
   const l=S.games.filter(g=>(!fs||(fs==='__rev'?g.rev:g.status===fs))&&(!fp||(fp==='dual'?g.alt:(g.plat===fp||g.alt||(fp==='PS3'&&g.plat==='PS2'&&g.ps3ok))))&&(g.name+' '+(g.gid||'')).toLowerCase().includes(q.toLowerCase()));
   let h=(S.games.length&&(!S.lastBk||Date.now()-S.lastBk>6048e5)?`<div class="card" style="border-color:var(--warn)"><b>⚠️ Faça um backup</b><div class="m">Seus jogos ficam só neste navegador e somem se você limpar os dados dele. ${S.lastBk?'Último backup: '+new Date(S.lastBk).toLocaleDateString('pt-BR'):'Você ainda não fez nenhum backup.'}</div><button id="bn" style="width:100%;margin-top:8px">⬇️ Baixar backup agora</button></div>`:'')+`${U.length?`<div class="card"><div class="row" style="align-items:center"><div class="m" style="flex:3">↩️ Última alteração: ${esc(undoTxt(U[0]))}</div><button class="g" id="und" style="flex:1">Desfazer</button></div></div>`:''}<input id="q" placeholder="🔍 Buscar por nome ou ID..." value="${esc(q)}">
   <div class="row"><select id="fs"><option value="">Todos os status</option><option value="__rev" ${fs==='__rev'?'selected':''}>⚠️ Para revisar</option>${ST.map(s=>`<option ${fs==s?'selected':''}>${s}</option>`).join('')}</select>
-  <select id="fp"><option value="">PS2 e PS3</option>${['PS2','PS3'].map(s=>`<option value="${s}" ${fp==s?'selected':''}>${s==='PS3'?'PS3 (+ PS2 que roda)':s}</option>`).join('')}<option value="dual" ${fp==='dual'?'selected':''}>Só os que tenho nas 2 versões</option></select></div>
+  <select id="fp"><option value="">Todas as plataformas</option>${['PS2','PS3','Xbox'].map(s=>`<option value="${s}" ${fp==s?'selected':''}>${s==='PS3'?'PS3 (+ PS2 que roda)':s}</option>`).join('')}<option value="dual" ${fp==='dual'?'selected':''}>Só os que tenho nas 2 versões</option></select></div>
   <select id="so" aria-label="Ordenar">${[['az','Ordem: A → Z'],['za','Ordem: Z → A'],['gb','Ordem: maior tamanho primeiro'],['rec','Ordem: últimos adicionados primeiro']].map(([v,t])=>`<option value="${v}" ${(S.sort||'az')===v?'selected':''}>${t}</option>`).join('')}</select>`;
   if(fp==='PS2'&&l.length)h+=`<div class="row"><button class="g" id="m3on">Marcar estes ${l.length} como "roda no PS3"</button><button class="g" id="m3off">Desmarcar todos</button></div>`;
   if(!l.length)h+=`<div class="card m">${S.games.length?'Nenhum jogo encontrado.':'Nenhum jogo ainda. Toque no + para adicionar o primeiro.'}</div>`;
@@ -164,7 +164,7 @@ function games(){
   if(md==='az')l.sort(cm);else if(md==='za')l.sort((a,b)=>cm(b,a));else if(md==='gb')l.sort((a,b)=>gb(b)-gb(a)||cm(a,b));
   VL=l.map(g=>g.id);
   l.forEach(g=>{const s=gb(g);const as3=fp==='PS3'&&g.plat==='PS2';const tag=as3?'<span class="bd" style="background:#0891b2">jogo de PS2</span>':(g.plat==='PS2'&&g.ps3ok?'<span class="bd" style="background:#0d9488">roda no PS3</span>':'');
-    h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':'🕹️')}</div>
+    h+=`<div class="card game" data-id="${g.id}"><div class="cv">${g.img?`<img src="${g.img}" alt="">`:(g.plat=='PS3'?'🎮':g.plat=='Xbox'?'🟢':'🕹️')}</div>
     <div class="gi"><b style="display:flex;gap:6px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${esc(g.name)}</span>${g.gid&&g.gidShow!==false?`<span style="flex:none;font-weight:500;color:var(--mut)">(${esc(g.gid)}${regionOf(g.gid)?' · '+regionOf(g.gid):''})</span>`:''}</b><div class="m">${as3?'PS2 (roda no PS3)':g.plat} ${g.genre?'· '+esc(g.genre):''} ${g.year?'· '+esc(g.year):''}</div>${g.lang?`<div class="m">🗣️ ${esc(g.lang)}</div>`:''}
     <div><span class="bd ${g.status.split(' ')[0]}">${g.status}</span>${g.rev?'<span class="bd" style="background:#7c3aed">revisar</span>':''}${g.alt?'<span class="bd" style="background:#c026d3">PS2 + PS3</span>':''}${tag}<span class="m">${s?fmt(s)+' GB':''} ${g.hd?'· 💾 '+esc(g.hd):''}</span></div></div></div>`});
   $('#main').innerHTML=h;
@@ -302,7 +302,7 @@ function form(id){
   <button class="g" id="cpaste" type="button" style="width:100%;margin-top:6px">📋 Colar imagem copiada</button>
   <div class="m">No Google Imagens: abra a imagem, segure o dedo nela → <b>Copiar imagem</b>, volte aqui e toque em "Colar imagem copiada". Sem precisar de print.</div>
   <div id="cg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px"></div><div class="m" id="aim"></div>
-  <div class="row"><div><label>Plataforma</label><select data-f="plat">${o(['PS2','PS3'],g.plat)}</select></div>
+  <div class="row"><div><label>Plataforma</label><select data-f="plat">${o(['PS2','PS3','Xbox'],g.plat)}</select></div>
   <div><label>Status</label><select data-f="status">${o(ST,g.status)}</select></div></div>
   <div id="p3w" style="display:${g.plat==='PS2'?'block':'none'}"><label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="p3ok" ${g.ps3ok?'checked':''} style="width:auto"> Este jogo de PS2 também roda no PS3</label></div>
   <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="altk" ${g.alt?'checked':''} style="width:auto"> 🔁 Tenho também a versão do outro console (PS2 + PS3)</label>
@@ -325,7 +325,7 @@ function form(id){
     g.img=bigImg(i);$('#pv').innerHTML=`<img src="${g.img}" alt="">`};i.src=r.result};r.readAsDataURL(fl)};
   const msg=t=>$('#aim').textContent=t;
   const fill=o=>{let n=0;['name','genre','year','dev','pub','players','syn'].forEach(k=>{const e=d.querySelector(`[data-f="${k}"]`);if(e&&o[k]){e.value=o[k];n++}});
-    if(o.plat==='PS2'||o.plat==='PS3'){d.querySelector('[data-f="plat"]').value=o.plat;$('#p3w').style.display=o.plat==='PS2'?'block':'none'}return n};
+    if(o.plat==='PS2'||o.plat==='PS3'||o.plat==='Xbox'){d.querySelector('[data-f="plat"]').value=o.plat;$('#p3w').style.display=o.plat==='PS2'?'block':'none'}return n};
   const ask=async(prompt,blob)=>{
     let sm=null;try{sm=await claude.use('sample')}catch(e){}
     if(!sm){msg('Esse recurso não está disponível aqui. Preencha manualmente.');return}
@@ -424,7 +424,7 @@ async function wikiSearch(host,q){
   const j=await (await fetch(u)).json();
   return Object.values((j.query&&j.query.pages)||{}).filter(x=>x.thumbnail).sort((a,b)=>a.index-b.index)}
 async function findCovers(nm,plat){
-  const pl=plat==='PS3'?'PlayStation 3':'PlayStation 2',n=norm(nm),seen=new Set(),out=[];let err=null,ok=0;
+  const pl=plat==='PS3'?'PlayStation 3':plat==='Xbox'?'Xbox':'PlayStation 2',n=norm(nm),seen=new Set(),out=[];let err=null,ok=0;
   const qs=[['en.wikipedia.org',nm+' '+pl+' video game'],['en.wikipedia.org',nm+' video game'],['pt.wikipedia.org',nm+' jogo eletrônico'],['en.wikipedia.org',nm]];
   for(const [h,q] of qs){
     try{(await wikiSearch(h,q)).forEach(x=>{ok=1;if(seen.has(x.title))return;seen.add(x.title);
@@ -646,7 +646,7 @@ function batch(){
   $('#main').innerHTML=`<div class="card"><b>📝 Adicionar vários jogos</b>
   <div class="m">Cole ou digite um título por linha. O app cria os jogos, busca gênero, ano, desenvolvedora e capinha, e deixa todos marcados <b>"revisar"</b> para você conferir depois.</div>
   <label>Títulos (um por linha)</label><textarea id="bl" rows="10" placeholder="God of War II&#10;Shadow of the Colossus&#10;Gran Turismo 4"></textarea>
-  <div class="row"><div><label>Plataforma</label><select id="bpl">${o(['PS2','PS3'],'PS2')}</select></div>
+  <div class="row"><div><label>Plataforma</label><select id="bpl">${o(['PS2','PS3','Xbox'],'PS2')}</select></div>
   <div><label>Status</label><select id="bst">${o(ST,'Procurando')}</select></div></div>
   <label>Armazenado em (opcional)</label><select id="bhd">${o(['',...S.hds.map(h=>h.n),'Nuvem','Disco original'],'')}</select>
   <label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="bp3" style="width:auto"> Jogos de PS2 que também rodam no PS3</label>
